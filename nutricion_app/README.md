@@ -1,16 +1,48 @@
-# nutricion_app
+# 💚 NutricionApp
 
-A new Flutter project.
+Sistema de nutrición personalizada desarrollado en Flutter.
 
-## Getting Started
+## 📱 Características
 
-This project is a starting point for a Flutter application.
+- Autenticación para nutricionistas y pacientes
+- Gestión completa de pacientes (CRUD)
+- Generación y edición de planes nutricionales
+- Chat en tiempo real
+- Descarga de planes en PDF
+- Panel de resumen para nutricionistas
 
-A few resources to get you started if this is your first Flutter project:
+## 🚀 Inicio Rápido
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```bash
+# Instalar dependencias
+flutter pub get
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+# Ejecutar la aplicación
+flutter run
+```
+
+## 📁 Estructura del Proyecto
+
+```
+lib/
+├── main.dart              # Punto de entrada
+├── screens/               # Pantallas
+│   ├── auth/              # Autenticación
+│   ├── nutricionista/     # Panel nutricionista
+│   ├── paciente/          # Panel paciente
+│   └── chat/              # Chat
+├── models/                # Modelos de datos
+├── services/              # Servicios
+├── widgets/               # Widgets reutilizables
+└── utils/                 # Utilidades
+```
+
+## 📚 Documentación
+
+Ver el archivo `../requerimientos.md` para la documentación completa de requerimientos.
+
+## 🔧 Tecnologías
+
+- Flutter/Dart
+- Supabase
+- PostgreSQL
