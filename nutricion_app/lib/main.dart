@@ -1,7 +1,14 @@
 import 'package:flutter/material.dart';
-import 'screens/auth/login_screen.dart';
+import 'features/auth/presentation/screens/login_screen.dart';
+import 'config/app_theme.dart';
+import 'shared/services/storage_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Inicializar servicios
+  await storageService.init();
+  
   runApp(const NutricionApp());
 }
 
@@ -13,13 +20,7 @@ class NutricionApp extends StatelessWidget {
     return MaterialApp(
       title: 'NutricionApp',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF4CAF50), // Verde relacionado con salud/nutrición
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.lightTheme,
       home: const LoginScreen(),
     );
   }

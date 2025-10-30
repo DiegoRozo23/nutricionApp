@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../nutricionista/nutricionista_panel.dart';
-import '../paciente/paciente_panel.dart';
+import 'nutricionista_panel.dart';
+import 'paciente_panel.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
