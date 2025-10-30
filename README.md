@@ -1,5 +1,7 @@
 # 💚 NutricionApp - Sistema de Nutrición Personalizada
 
+[![GitHub](https://img.shields.io/badge/GitHub-Repository-blue.svg)](https://github.com/DiegoRozo23/nutricionApp)
+
 Aplicación móvil de nutrición personalizada desarrollada en Flutter para la gestión de pacientes y planes nutricionales.
 
 ## 📋 Descripción
