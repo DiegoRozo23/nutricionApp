@@ -212,9 +212,21 @@ El sistema consta de:
 
 ## 📝 Notas Importantes
 
-- **Login**: Ya implementado
+- **Login**: Sistema de login con validación de credenciales (DNI/username y contraseña)
 - **Sistema de Recomendaciones**: NO se implementará en esta fase (implementación futura)
 - **Validaciones**: Se omitirán validaciones en formularios (excepto login) para evitar demoras
 - **Compatibilidad**: Debe funcionar en versiones relativamente antiguas de Android y iOS
 - **Diseño**: Minimalista, intuitivo, con colores relacionados a salud/nutrición
+
+---
+
+## 🔐 Detalles de Implementación del Login
+
+### Campo de Login
+- **Nutricionista**: Usuario/Username y Contraseña
+- **Paciente**: DNI y Contraseña
+- Implementar validación de campos obligatorios
+- Mensajes de error claros para credenciales incorrectas
+- Mantener sesión activa mientras el usuario no cierre sesión
+- Funcionalidad de "Recordarme" (opcional)
 
