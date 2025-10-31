@@ -102,7 +102,9 @@ nutricion_app/
 │       ├── widgets/             # Widgets reutilizables
 │       └── utils/               # Constantes y helpers
 │
-├── SCHEMA_COMPLETO.sql         # Esquema de BD completo con RLS
+├── SCHEMA_COMPLETO.sql         # Esquema de BD completo
+├── SCHEMA_RLS_SIMPLIFICADO.sql # Políticas RLS alternativas
+├── CREAR_NUTRICIONISTA.sql     # Ejemplo de creación de usuarios
 ├── requerimientos.md           # Documentación de requerimientos
 ├── pubspec.yaml
 └── README.md                    # Este archivo
@@ -110,7 +112,7 @@ nutricion_app/
 
 ## 🔒 Autenticación
 
-- Los nutricionistas se crean usando la función SQL `crear_nutricionista_completo()` incluida en `SCHEMA_COMPLETO.sql`
+- Los nutricionistas se crean usando la función SQL automatizada `crear_nutricionista_desde_auth_uid()` (ver `CREAR_NUTRICIONISTA_RAPIDO.sql`)
 - Los pacientes son creados por su nutricionista asignado
 - Autenticación segura con Supabase Auth
 
