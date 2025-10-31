@@ -168,25 +168,6 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
                                   ],
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _paciente.activo
-                                      ? Colors.green
-                                      : Colors.grey,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  _paciente.activo ? 'Activo' : 'Inactivo',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
                         ],
