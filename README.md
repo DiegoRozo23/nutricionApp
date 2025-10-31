@@ -70,25 +70,44 @@ flutter run
 
 ## 📁 Estructura del Proyecto
 
+### Arquitectura: Clean Architecture Feature-Based
+
 ```
-nutricion_app/
-├── lib/
-│   ├── main.dart              # Punto de entrada
-│   ├── screens/               # Pantallas
-│   │   ├── auth/              # Autenticación
-│   │   ├── nutricionista/     # Panel nutricionista
-│   │   ├── paciente/          # Panel paciente
-│   │   └── chat/              # Chat
-│   ├── models/                # Modelos de datos
-│   ├── services/              # Servicios
-│   │   ├── supabase_service.dart
-│   │   └── auth_service.dart
-│   ├── widgets/               # Widgets reutilizables
-│   └── utils/                 # Utilidades
-├── test/                      # Pruebas
-├── android/                   # Configuración Android
-├── ios/                       # Configuración iOS
-└── pubspec.yaml              # Dependencias
+nutricion_app/lib/
+├── main.dart                    # Punto de entrada
+├── config/                      # Configuración global
+│   ├── app_theme.dart          # Temas y estilos
+│   └── app_routes.dart         # Rutas de navegación
+│
+├── features/                    # Módulos funcionales
+│   ├── auth/                   # 🔐 Autenticación
+│   │   ├── presentation/       # 👁️ Capa de Presentación
+│   │   │   ├── screens/       # Pantallas (Login, Panels)
+│   │   │   └── widgets/       # Widgets específicos
+│   │   ├── domain/            # 🧠 Lógica de Negocio
+│   │   │   ├── entities/      # Entidades puras
+│   │   │   ├── repositories/  # Interfaces
+│   │   │   └── usecases/      # Casos de uso
+│   │   └── data/              # 💾 Fuentes de Datos
+│   │       ├── models/        # Modelos de datos
+│   │       ├── repositories/  # Implementaciones
+│   │       └── datasources/   # Supabase
+│   │
+│   ├── pacientes/             # 👥 Gestión de Pacientes
+│   │   ├── presentation/
+│   │   ├── domain/
+│   │   └── data/
+│   │
+│   └── chat/                  # 💬 Chat (Pendiente)
+│       └── presentation/
+│
+└── shared/                     # 🎯 Código compartido
+    ├── widgets/               # Widgets reutilizables
+    ├── services/              # Servicios globales
+    │   ├── supabase_service.dart
+    │   ├── storage_service.dart
+    │   └── secure_storage_service.dart
+    └── utils/                 # Utilidades
 ```
 
 ## 🔒 Autenticación
