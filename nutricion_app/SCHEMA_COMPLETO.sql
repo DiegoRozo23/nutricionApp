@@ -476,31 +476,26 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- POLÍTICAS RLS PARA NUTRICIONISTAS
 -- ============================================
 
--- Los nutricionistas solo ven sus propios datos
-CREATE POLICY "nutricionistas_select_own" ON nutricionistas
-FOR SELECT USING (auth_uid = auth.uid()::uuid);
-
--- Los nutricionistas pueden actualizar sus propios datos
-CREATE POLICY "nutricionistas_update_own" ON nutricionistas
-FOR UPDATE USING (auth_uid = auth.uid()::uuid)
-WITH CHECK (auth_uid = auth.uid()::uuid);
-
--- IMPORTANTE: Permitir búsqueda pública por username/email para login
--- Esto es necesario ANTES de autenticar, cuando no hay auth.uid() todavía
-CREATE POLICY "nutricionistas_public_username_email" ON nutricionistas
+-- IMPORTANTE: Una sola política que cubre todos los casos SELECT de nutricionistas
+-- Combina: login público, acceso propio, y acceso de pacientes asignados
+CREATE POLICY "nutricionistas_select_allowed" ON nutricionistas
 FOR SELECT USING (
-  auth.uid() IS NULL OR auth_uid = auth.uid()::uuid
-);
-
--- Pacientes pueden ver su nutricionista asignado
-CREATE POLICY "nutricionistas_visible_to_patients" ON nutricionistas
-FOR SELECT USING (
+  auth.uid() IS NULL  -- Permite acceso público para login
+  OR 
+  auth_uid = auth.uid()::uuid  -- Permite acceso a datos propios
+  OR
   EXISTS (
+    -- Permite que pacientes vean su nutricionista asignado
     SELECT 1 FROM pacientes
     WHERE pacientes.nutricionista_id = nutricionistas.id
       AND pacientes.auth_uid = auth.uid()::uuid
   )
 );
+
+-- Los nutricionistas pueden actualizar sus propios datos
+CREATE POLICY "nutricionistas_update_own" ON nutricionistas
+FOR UPDATE USING (auth_uid = auth.uid()::uuid)
+WITH CHECK (auth_uid = auth.uid()::uuid);
 
 CREATE POLICY "pacientes_select_by_nutricionista" ON pacientes
 FOR SELECT USING (
