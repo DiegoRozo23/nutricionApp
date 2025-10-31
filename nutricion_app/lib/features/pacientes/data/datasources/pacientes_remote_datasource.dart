@@ -179,25 +179,23 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         print('✅ Nutricionista encontrado: id=${nutriData['id']}, email=${nutriData['email']}');
       }
 
-      // Paso 1: Crear cuenta en Supabase Auth
+      // Paso 1: Crear cuenta en Supabase Auth (solo DNI y contraseña)
       // Usamos el DNI como email (formato: pacienteDNI@app.com)
-      // Esto permite que el paciente inicie sesión con DNI y contraseña
-      // Nota: Supabase requiere un email válido con formato estándar
       final email = 'paciente${paciente.dni}@app.com';
       
-      // Crear usuario en Supabase Auth con auto-confirmación
-      // Usamos emailRedirectTo para evitar el flujo de verificación de email
+      if (kDebugMode) {
+        print('📝 Creando usuario en Supabase Auth con DNI: ${paciente.dni}');
+      }
+      
+      // Crear usuario en Supabase Auth (mínimo necesario)
       final authResponse = await supabase.auth.signUp(
         email: email,
         password: password,
-        emailRedirectTo: null, // No necesitamos redirect
+        emailRedirectTo: null,
         data: {
           'dni': paciente.dni,
-          'nombre': paciente.nombre,
-          'apellidos': paciente.apellidos,
           'role': 'paciente',
         },
-        // Importante: Esto auto-confirma el email si está habilitado en Supabase
       );
 
       if (authResponse.user == null) {
@@ -206,30 +204,27 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
 
       final authUid = authResponse.user!.id;
 
-      // Paso 2: Insertar paciente en la tabla con auth_uid
-      final dataToInsert = {
+      if (kDebugMode) {
+        print('✅ Usuario creado en Auth con UUID: $authUid');
+      }
+
+      // Paso 2: Insertar paciente con solo datos mínimos (DNI, nutricionista_id, auth_uid)
+      // Esto evita problemas con RLS al tener demasiados campos a la vez
+      if (kDebugMode) {
+        print('📝 Insertando paciente con datos mínimos en tabla...');
+      }
+
+      final dataMinimo = {
         'auth_uid': authUid,
         'nutricionista_id': nutricionistaId,
-        'nombre': paciente.nombre,
-        'apellidos': paciente.apellidos,
         'dni': paciente.dni,
-        if (paciente.sexo != null) 'sexo': paciente.sexo,
-        if (paciente.edad != null) 'edad': paciente.edad,
-        if (paciente.peso != null) 'peso': paciente.peso,
-        if (paciente.talla != null) 'talla': paciente.talla,
-        if (paciente.imc != null) 'imc': paciente.imc,
-        if (paciente.medidasAntropometricas != null)
-          'medidas_antropometricas': paciente.medidasAntropometricas,
-        if (paciente.historialMedico != null)
-          'historial_medico': paciente.historialMedico,
-        if (paciente.observaciones != null) 'observaciones': paciente.observaciones,
-        'activo': paciente.activo,
+        'activo': true, // Por defecto activo
       };
 
-      // Insertar paciente y obtener los datos insertados
+      // Insertar paciente con solo datos mínimos
       final response = await supabase
           .from('pacientes')
-          .insert(dataToInsert)
+          .insert(dataMinimo)
           .select();
 
       // Verificar que se insertó correctamente
@@ -239,8 +234,63 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
 
       // Obtener el primer resultado (debería ser el único)
       final insertedData = response.first as Map<String, dynamic>;
+      final pacienteId = insertedData['id'] as String;
 
-      return PacienteModel.fromSupabaseRow(insertedData);
+      if (kDebugMode) {
+        print('✅ Paciente creado con ID: $pacienteId');
+      }
+
+      // Paso 3: Actualizar el paciente con el resto de los datos
+      // Esto se hace en un UPDATE separado para evitar problemas con RLS
+      if (kDebugMode) {
+        print('📝 Actualizando paciente con datos completos...');
+      }
+
+      final dataCompleto = <String, dynamic>{
+        'nombre': paciente.nombre,
+        'apellidos': paciente.apellidos,
+      };
+
+      // Agregar campos opcionales solo si tienen valor
+      if (paciente.sexo != null) dataCompleto['sexo'] = paciente.sexo;
+      if (paciente.edad != null) dataCompleto['edad'] = paciente.edad;
+      if (paciente.peso != null) dataCompleto['peso'] = paciente.peso;
+      if (paciente.talla != null) dataCompleto['talla'] = paciente.talla;
+      if (paciente.imc != null) dataCompleto['imc'] = paciente.imc;
+      if (paciente.medidasAntropometricas != null) {
+        dataCompleto['medidas_antropometricas'] = paciente.medidasAntropometricas;
+      }
+      if (paciente.historialMedico != null) {
+        dataCompleto['historial_medico'] = paciente.historialMedico;
+      }
+      if (paciente.observaciones != null) {
+        dataCompleto['observaciones'] = paciente.observaciones;
+      }
+      dataCompleto['activo'] = paciente.activo;
+
+      // Actualizar con todos los datos
+      final updateResponse = await supabase
+          .from('pacientes')
+          .update(dataCompleto)
+          .eq('id', pacienteId)
+          .select();
+
+      if (updateResponse == null || updateResponse.isEmpty) {
+        // Si falla la actualización, al menos el paciente básico ya está creado
+        if (kDebugMode) {
+          print('⚠️ Paciente creado pero no se pudieron actualizar todos los datos');
+        }
+        // Retornar el paciente con los datos mínimos
+        return PacienteModel.fromSupabaseRow(insertedData);
+      }
+
+      final updatedData = updateResponse.first as Map<String, dynamic>;
+      
+      if (kDebugMode) {
+        print('✅ Paciente actualizado completamente');
+      }
+
+      return PacienteModel.fromSupabaseRow(updatedData);
     } on PostgrestException catch (e) {
       if (kDebugMode) {
         print('Error de Postgrest: ${e.message}');
