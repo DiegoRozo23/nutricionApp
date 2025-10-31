@@ -110,7 +110,7 @@ nutricion_app/
 
 ## 🔒 Autenticación
 
-- Los nutricionistas se crean usando la función SQL automatizada `crear_nutricionista_desde_auth_uid()` (ver `CREAR_NUTRICIONISTA_RAPIDO.sql`)
+- Los nutricionistas se crean usando la función SQL `crear_nutricionista_completo()` incluida en `SCHEMA_COMPLETO.sql`
 - Los pacientes son creados por su nutricionista asignado
 - Autenticación segura con Supabase Auth
 
