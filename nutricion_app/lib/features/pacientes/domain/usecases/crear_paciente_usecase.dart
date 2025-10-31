@@ -8,11 +8,13 @@ class CrearPacienteUseCase {
   const CrearPacienteUseCase(this.repository);
 
   /// Ejecutar creación de paciente
+  /// Solo crea la cuenta en Supabase Auth con DNI y contraseña
+  /// El paciente completará su perfil después de iniciar sesión
   Future<PacientesResult<Paciente>> call({
-    required String nombre,
-    required String apellidos,
-    String? dni,
-    String? password,
+    required String dni,
+    required String password,
+    String? nombre,
+    String? apellidos,
     String? sexo,
     int? edad,
     double? peso,
@@ -23,28 +25,14 @@ class CrearPacienteUseCase {
     String? observaciones,
   }) async {
     // Validaciones básicas
-    if (nombre.isEmpty) {
+    if (dni.isEmpty) {
       return PacientesFailure(
-        message: 'El nombre es obligatorio',
-        code: 'empty_name',
-      );
-    }
-
-    if (apellidos.isEmpty) {
-      return PacientesFailure(
-        message: 'Los apellidos son obligatorios',
-        code: 'empty_lastname',
-      );
-    }
-
-    if (dni == null || dni.isEmpty) {
-      return PacientesFailure(
-        message: 'El DNI es obligatorio para crear un paciente',
+        message: 'El DNI es obligatorio',
         code: 'empty_dni',
       );
     }
 
-    if (password == null || password.isEmpty) {
+    if (password.isEmpty) {
       return PacientesFailure(
         message: 'La contraseña inicial es obligatoria',
         code: 'empty_password',
@@ -58,12 +46,12 @@ class CrearPacienteUseCase {
       );
     }
 
-    // Crear objeto paciente (el ID y fechas se generan en el datasource)
-    // Nota: password se pasa directamente al datasource para crear cuenta en Auth
+    // Crear objeto paciente mínimo (solo DNI)
+    // El resto se completará cuando el paciente inicie sesión
     final paciente = Paciente(
-      id: '', // Se generará en el datasource
-      nombre: nombre,
-      apellidos: apellidos,
+      id: '', // Se creará cuando complete su perfil
+      nombre: nombre ?? '',
+      apellidos: apellidos ?? '',
       dni: dni,
       sexo: sexo,
       edad: edad,

@@ -24,10 +24,10 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
   }
 
   Future<void> _crearPaciente({
-    required String nombre,
-    required String apellidos,
-    String? dni,
-    String? password,
+    required String dni,
+    required String password,
+    String? nombre,
+    String? apellidos,
     String? sexo,
     int? edad,
     double? peso,
@@ -43,18 +43,10 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
     });
 
     final result = await _crearPacienteUseCase(
-      nombre: nombre,
-      apellidos: apellidos,
       dni: dni,
       password: password, // Contraseña inicial
-      sexo: sexo,
-      edad: edad,
-      peso: peso,
-      talla: talla,
-      imc: imc,
-      medidasAntropometricas: null, // Se puede agregar después
-      historialMedico: historialMedico,
-      observaciones: observaciones,
+      nombre: nombre ?? '',
+      apellidos: apellidos ?? '',
     );
 
     if (!mounted) return;
@@ -93,10 +85,147 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
       body: SafeArea(
         child: _isLoading
             ? const Center(child: CircularProgressIndicator())
-            : FormularioPaciente(
-                isEditing: false,
+            : _FormularioSimplePaciente(
                 onSubmit: _crearPaciente,
               ),
+      ),
+    );
+  }
+}
+
+/// Formulario simple que solo pide DNI y contraseña
+class _FormularioSimplePaciente extends StatefulWidget {
+  final Function({
+    required String dni,
+    required String password,
+  }) onSubmit;
+
+  const _FormularioSimplePaciente({
+    required this.onSubmit,
+  });
+
+  @override
+  State<_FormularioSimplePaciente> createState() => _FormularioSimplePacienteState();
+}
+
+class _FormularioSimplePacienteState extends State<_FormularioSimplePaciente> {
+  final _formKey = GlobalKey<FormState>();
+  final _dniController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    _dniController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _handleSubmit() {
+    if (_formKey.currentState!.validate()) {
+      widget.onSubmit(
+        dni: _dniController.text.trim(),
+        password: _passwordController.text,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 20),
+            Text(
+              'Crear cuenta de paciente',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Solo necesitamos el DNI y una contraseña. El paciente completará su perfil después de iniciar sesión.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[600],
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+            // Campo DNI
+            TextFormField(
+              controller: _dniController,
+              decoration: const InputDecoration(
+                labelText: 'DNI *',
+                hintText: 'Ej: 12345678',
+                prefixIcon: Icon(Icons.badge),
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'El DNI es obligatorio';
+                }
+                if (value.trim().length < 5) {
+                  return 'El DNI debe tener al menos 5 caracteres';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            // Campo Contraseña
+            TextFormField(
+              controller: _passwordController,
+              decoration: InputDecoration(
+                labelText: 'Contraseña inicial *',
+                hintText: 'Mínimo 4 caracteres',
+                prefixIcon: const Icon(Icons.lock),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                  ),
+                  onPressed: () {
+                    setState(() {
+                      _obscurePassword = !_obscurePassword;
+                    });
+                  },
+                ),
+                border: const OutlineInputBorder(),
+              ),
+              obscureText: _obscurePassword,
+              textInputAction: TextInputAction.done,
+              onFieldSubmitted: (_) => _handleSubmit(),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'La contraseña es obligatoria';
+                }
+                if (value.length < 4) {
+                  return 'La contraseña debe tener al menos 4 caracteres';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 32),
+            // Botón crear
+            ElevatedButton(
+              onPressed: _handleSubmit,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF4CAF50),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+              ),
+              child: const Text(
+                'Crear cuenta',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
