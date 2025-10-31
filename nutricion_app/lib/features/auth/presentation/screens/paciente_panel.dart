@@ -41,22 +41,9 @@ class _PacientePanelState extends State<PacientePanel> {
       _paciente = paciente;
     });
 
-    // Debug: verificar datos del paciente
-    if (paciente != null) {
-      debugPrint('🔍 Paciente obtenido:');
-      debugPrint('   - ID: ${paciente.id}');
-      debugPrint('   - Nombre: ${paciente.nombreCompleto}');
-      debugPrint('   - Nutricionista ID: ${paciente.nutricionistaId}');
-    } else {
-      debugPrint('⚠️ No se obtuvo paciente');
-    }
-
-    // Si el paciente tiene nutricionista asignado, obtenerlo
     if (paciente?.nutricionistaId != null && paciente!.nutricionistaId!.isNotEmpty) {
-      debugPrint('📋 Intentando cargar nutricionista: ${paciente.nutricionistaId}');
       await _cargarNutricionista(paciente.nutricionistaId!);
     } else {
-      debugPrint('⚠️ Paciente no tiene nutricionista_id asignado');
       setState(() {
         _isLoadingNutricionista = false;
       });
@@ -67,10 +54,6 @@ class _PacientePanelState extends State<PacientePanel> {
     try {
       final supabase = supabaseService.client;
       
-      debugPrint('🔍 Consultando nutricionista con ID: $nutricionistaId');
-      
-      // Intentar obtener el nutricionista usando JOIN con pacientes para que RLS funcione
-      // O consultar directamente si hay política RLS que lo permita
       final nutriResponse = await supabase
           .from('nutricionistas')
           .select()
@@ -79,8 +62,6 @@ class _PacientePanelState extends State<PacientePanel> {
 
       if (nutriResponse != null && nutriResponse.isNotEmpty) {
         final nutriData = nutriResponse as Map<String, dynamic>;
-        
-        debugPrint('✅ Nutricionista encontrado: ${nutriData['nombre']} ${nutriData['apellidos']}');
         
         setState(() {
           _nutricionista = Nutricionista(
@@ -101,8 +82,6 @@ class _PacientePanelState extends State<PacientePanel> {
           _isLoadingNutricionista = false;
         });
       } else {
-        debugPrint('⚠️ Nutricionista no encontrado o sin permisos RLS');
-        // Intentar obtener a través de un JOIN con pacientes
         try {
           final pacienteResponse = await supabase
               .from('pacientes')
@@ -112,7 +91,6 @@ class _PacientePanelState extends State<PacientePanel> {
           
           if (pacienteResponse != null && pacienteResponse['nutricionistas'] != null) {
             final nutriData = pacienteResponse['nutricionistas'] as Map<String, dynamic>;
-            debugPrint('✅ Nutricionista encontrado vía JOIN: ${nutriData['nombre']}');
             
             setState(() {
               _nutricionista = Nutricionista(
@@ -138,14 +116,12 @@ class _PacientePanelState extends State<PacientePanel> {
             });
           }
         } catch (joinError) {
-          debugPrint('❌ Error en JOIN: $joinError');
           setState(() {
             _isLoadingNutricionista = false;
           });
         }
       }
     } catch (e) {
-      debugPrint('❌ Error al cargar nutricionista: $e');
       if (mounted) {
         setState(() {
           _isLoadingNutricionista = false;

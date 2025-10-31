@@ -27,8 +27,6 @@ class AppConstants {
   static const double defaultPadding = 16.0;
   static const double defaultBorderRadius = 12.0;
   
-  // Api endpoints (cuando se implemente)
-  static const String apiBaseUrl = 'https://api.nutricion.app'; // TODO: Cambiar por URL real
 }
 
 /// Clase para validaciones comunes

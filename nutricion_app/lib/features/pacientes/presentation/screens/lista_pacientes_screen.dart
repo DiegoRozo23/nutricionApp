@@ -74,13 +74,9 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
               ),
               callback: (payload) {
                 if (mounted) {
-                  debugPrint('🔄 Cambio detectado en tiempo real: ${payload.eventType}');
-                  // Recargar lista cuando hay cambios (INSERT, UPDATE, DELETE)
-                  // Agregar un pequeño delay para asegurar que el cambio se haya guardado
                   Future.delayed(const Duration(milliseconds: 500), () {
                     if (mounted) {
                       _cargarPacientes();
-                      // Segunda recarga después de otro delay para asegurar
                       Future.delayed(const Duration(milliseconds: 300), () {
                         if (mounted) {
                           _cargarPacientes();
@@ -91,24 +87,10 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
                 }
               },
             )
-            .subscribe(
-              (status, [error]) {
-                if (status == RealtimeSubscribeStatus.subscribed) {
-                  debugPrint('✅ Suscrito a cambios en tiempo real de pacientes');
-                } else {
-                  debugPrint('⚠️ Estado de suscripción: $status');
-                  if (error != null) {
-                    debugPrint('❌ Error en suscripción tiempo real: $error');
-                  }
-                }
-              },
-            );
-      }).catchError((error) {
-        debugPrint('Error al obtener nutricionista para tiempo real: $error');
-      });
+            .subscribe((status, [error]) {});
+      }).catchError((error) {});
     } catch (e) {
       // Si falla la suscripción, continuar sin tiempo real
-      debugPrint('Error al suscribirse a tiempo real: $e');
     }
   }
 
@@ -150,19 +132,12 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
           _pacientes = nuevaLista;
           _isLoading = false;
         });
-        
-        // Debug: mostrar cuántos pacientes se cargaron
-        debugPrint('📋 Pacientes cargados: ${nuevaLista.length}');
       } else if (result is PacientesFailure) {
         setState(() {
           _isLoading = false;
         });
         
-        // No mostrar error si es que no encontró nutricionista - solo log
         if (result.message.contains('Nutricionista no encontrado')) {
-          debugPrint('⚠️ ${result.message}');
-          // Si no encontró nutricionista, puede ser que la sesión cambió
-          // Mostrar mensaje amigable
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Sesión expirada. Por favor, sal y vuelve a entrar.'),
@@ -180,7 +155,6 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
         }
       }
     } catch (e) {
-      debugPrint('❌ Error al cargar pacientes: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -390,7 +364,7 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
                     child: ListView.builder(
                       padding: EdgeInsets.only(
                         top: 8,
-                        bottom: MediaQuery.of(context).padding.bottom + 100, // Padding considerable para botones de Android y FAB
+                        bottom: MediaQuery.of(context).padding.bottom + 100,
                       ),
                       itemCount: _pacientes.length,
                       itemBuilder: (context, index) {
