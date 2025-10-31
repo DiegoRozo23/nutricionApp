@@ -143,7 +143,11 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
           .from('nutricionistas')
           .select('id')
           .eq('auth_uid', user.id)
-          .single();
+          .maybeSingle();
+
+      if (nutriData == null || nutriData.isEmpty) {
+        throw PacientesException('Nutricionista no encontrado en la base de datos');
+      }
 
       final nutricionistaId = nutriData['id'] as String;
 
