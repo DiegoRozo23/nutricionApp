@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../../../shared/services/supabase_service.dart';
 import 'role_selection_screen.dart';
 import 'nutricionista_panel.dart';
 import 'paciente_panel.dart';
@@ -27,6 +28,19 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(seconds: 2));
 
     if (!mounted) return;
+
+    // Verificar si Supabase está inicializado
+    if (!supabaseService.isConnected) {
+      // Si no está conectado, ir directamente a selección de rol
+      // (la app funcionará pero sin backend)
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const RoleSelectionScreen(),
+        ),
+      );
+      return;
+    }
 
     // Verificar sesión
     final result = await _repository.checkSession();

@@ -23,7 +23,15 @@ class SupabaseService {
     
     try {
       // Cargar variables de entorno
-      await dotenv.load(fileName: ".env");
+      try {
+        await dotenv.load(fileName: ".env");
+      } catch (e) {
+        if (kDebugMode) {
+          print('⚠️ No se encontró archivo .env');
+          print('📝 Copia env.example a .env y configura tus credenciales');
+        }
+        return;
+      }
       
       final String url = dotenv.env['SUPABASE_URL'] ?? '';
       final String anonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
@@ -52,6 +60,7 @@ class SupabaseService {
     } catch (e) {
       if (kDebugMode) {
         print('❌ Error al inicializar Supabase: $e');
+        print('⚠️ La app funcionará en modo desconectado');
       }
       _initialized = false;
     }
