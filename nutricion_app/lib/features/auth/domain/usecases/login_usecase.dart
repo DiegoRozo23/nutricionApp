@@ -34,9 +34,9 @@ class LoginUseCase {
       );
     }
 
-    if (password.length < 4) {
+    if (password.length < 6) {
       return AuthFailure(
-        message: 'La contraseña debe tener al menos 4 caracteres',
+        message: 'La contraseña debe tener al menos 6 caracteres',
         code: 'invalid_password_length',
       );
     }

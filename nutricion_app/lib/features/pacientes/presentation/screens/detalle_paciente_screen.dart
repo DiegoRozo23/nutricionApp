@@ -30,6 +30,20 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
   }
 
   Future<void> _cargarPaciente() async {
+    // Verificar que el paciente tenga ID válido
+    if (_paciente.id.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error: Paciente sin ID válido. Volviendo a la lista...'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        Navigator.of(context).pop();
+      }
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
@@ -51,22 +65,29 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
     } else if (result is PacientesFailure) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.message),
-          backgroundColor: Colors.red,
+          content: Text('${result.message}. Intentando recargar...'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 2),
         ),
       );
+      // Esperar un momento y reintentar
+      await Future.delayed(const Duration(milliseconds: 500));
+      await _cargarPaciente();
     }
   }
 
-  void _navegarAEditar() {
-    Navigator.of(context).push(
+  void _navegarAEditar() async {
+    final resultado = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => EditarPacienteScreen(paciente: _paciente),
       ),
-    ).then((_) {
-      // Recargar paciente cuando vuelva de editar
-      _cargarPaciente();
-    });
+    );
+    
+    // Si se actualizó el paciente, cerrar esta pantalla también y volver a la lista
+    if (resultado == true && mounted) {
+      // Cerrar esta pantalla (detalle) y volver a la lista
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override
@@ -86,9 +107,16 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+          : Scrollbar(
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                  bottom: MediaQuery.of(context).padding.bottom + 80, // Padding considerable para botones de Android
+                ),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Card de información básica
@@ -213,6 +241,35 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Medidas Antropométricas
+                  if (_paciente.medidasAntropometricas != null && 
+                      _paciente.medidasAntropometricas!.isNotEmpty) ...[
+                    const Text(
+                      'Medidas Antropométricas',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            ..._paciente.medidasAntropometricas!.entries.map((entry) {
+                              return _InfoRow(
+                                label: entry.key,
+                                value: _formatMedidaValue(entry.value),
+                              );
+                            }).toList(),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
                   // Historial médico
                   if (_paciente.historialMedico != null) ...[
                     const Text(
@@ -251,9 +308,26 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
                     const SizedBox(height: 16),
                   ],
                 ],
+            ),
               ),
             ),
     );
+  }
+
+  /// Formatear el valor de una medida antropométrica
+  String _formatMedidaValue(dynamic value) {
+    if (value is num) {
+      // Si es un número, mostrar con formato apropiado
+      if (value is int) {
+        return value.toString();
+      } else if (value is double) {
+        // Redondear a 2 decimales si es necesario
+        return value == value.roundToDouble()
+            ? value.round().toString()
+            : value.toStringAsFixed(2);
+      }
+    }
+    return value.toString();
   }
 }
 
@@ -274,7 +348,7 @@ class _InfoRow extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
+            width: 150,
             child: Text(
               label,
               style: TextStyle(
@@ -284,7 +358,12 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           Expanded(
-            child: Text(value),
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 15,
+              ),
+            ),
           ),
         ],
       ),

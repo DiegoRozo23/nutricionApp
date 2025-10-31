@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/usecases/obtener_pacientes_usecase.dart';
 import '../../domain/usecases/eliminar_paciente_usecase.dart';
 import '../../data/repositories/pacientes_repository_impl.dart';
@@ -6,7 +7,9 @@ import '../../domain/repositories/pacientes_repository.dart';
 import '../../domain/entities/paciente.dart';
 import '../widgets/paciente_card.dart';
 import 'detalle_paciente_screen.dart';
+import 'editar_paciente_screen.dart';
 import 'crear_paciente_screen.dart';
+import '../../../../shared/services/supabase_service.dart';
 
 /// Pantalla que muestra la lista de pacientes del nutricionista
 class ListaPacientesScreen extends StatefulWidget {
@@ -23,6 +26,7 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
 
   bool _isLoading = true;
   List<Paciente> _pacientes = [];
+  RealtimeChannel? _channel;
 
   @override
   void initState() {
@@ -30,33 +34,164 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
     _obtenerPacientesUseCase = ObtenerPacientesUseCase(_repository);
     _eliminarPacienteUseCase = EliminarPacienteUseCase(_repository);
     _cargarPacientes();
+    _suscribirATiempoReal();
+  }
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
+  }
+
+  /// Suscribirse a cambios en tiempo real de la tabla pacientes
+  void _suscribirATiempoReal() {
+    try {
+      final supabase = supabaseService.client;
+      final user = supabase.auth.currentUser;
+      
+      if (user == null) return;
+
+      // Obtener el nutricionista_id del usuario autenticado
+      supabase
+          .from('nutricionistas')
+          .select('id')
+          .eq('auth_uid', user.id)
+          .single()
+          .then((nutriData) {
+        final nutricionistaId = nutriData['id'] as String;
+
+        // Suscribirse a cambios en pacientes del nutricionista
+        _channel = supabase
+            .channel('pacientes_changes_${user.id}')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: 'pacientes',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'nutricionista_id',
+                value: nutricionistaId,
+              ),
+              callback: (payload) {
+                if (mounted) {
+                  debugPrint('🔄 Cambio detectado en tiempo real: ${payload.eventType}');
+                  // Recargar lista cuando hay cambios (INSERT, UPDATE, DELETE)
+                  // Agregar un pequeño delay para asegurar que el cambio se haya guardado
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    if (mounted) {
+                      _cargarPacientes();
+                      // Segunda recarga después de otro delay para asegurar
+                      Future.delayed(const Duration(milliseconds: 300), () {
+                        if (mounted) {
+                          _cargarPacientes();
+                        }
+                      });
+                    }
+                  });
+                }
+              },
+            )
+            .subscribe(
+              (status, [error]) {
+                if (status == RealtimeSubscribeStatus.subscribed) {
+                  debugPrint('✅ Suscrito a cambios en tiempo real de pacientes');
+                } else {
+                  debugPrint('⚠️ Estado de suscripción: $status');
+                  if (error != null) {
+                    debugPrint('❌ Error en suscripción tiempo real: $error');
+                  }
+                }
+              },
+            );
+      }).catchError((error) {
+        debugPrint('Error al obtener nutricionista para tiempo real: $error');
+      });
+    } catch (e) {
+      // Si falla la suscripción, continuar sin tiempo real
+      debugPrint('Error al suscribirse a tiempo real: $e');
+    }
   }
 
   Future<void> _cargarPacientes() async {
+    if (!mounted) return;
+    
     setState(() {
       _isLoading = true;
     });
 
-    final result = await _obtenerPacientesUseCase();
-
-    if (!mounted) return;
-
-    if (result is PacientesSuccess<List<Paciente>>) {
-      setState(() {
-        _pacientes = result.data;
-        _isLoading = false;
-      });
-    } else if (result is PacientesFailure) {
-      setState(() {
-        _isLoading = false;
-      });
+    try {
+      // Verificar que el usuario esté autenticado antes de intentar cargar
+      final supabase = supabaseService.client;
+      final currentUser = supabase.auth.currentUser;
       
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.message),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (currentUser == null) {
+        if (mounted) {
+          setState(() {
+            _isLoading = false;
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sesión no válida. Por favor, inicia sesión nuevamente.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+        return;
+      }
+
+      final result = await _obtenerPacientesUseCase();
+
+      if (!mounted) return;
+
+      if (result is PacientesSuccess<List<Paciente>>) {
+        final nuevaLista = result.data;
+        setState(() {
+          _pacientes = nuevaLista;
+          _isLoading = false;
+        });
+        
+        // Debug: mostrar cuántos pacientes se cargaron
+        debugPrint('📋 Pacientes cargados: ${nuevaLista.length}');
+      } else if (result is PacientesFailure) {
+        setState(() {
+          _isLoading = false;
+        });
+        
+        // No mostrar error si es que no encontró nutricionista - solo log
+        if (result.message.contains('Nutricionista no encontrado')) {
+          debugPrint('⚠️ ${result.message}');
+          // Si no encontró nutricionista, puede ser que la sesión cambió
+          // Mostrar mensaje amigable
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Sesión expirada. Por favor, sal y vuelve a entrar.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.message),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error al cargar pacientes: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar pacientes: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -108,39 +243,109 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
     }
   }
 
-  void _navegarADetalle(Paciente paciente) {
-    Navigator.of(context).push(
+  void _navegarADetalle(Paciente paciente) async {
+    // Verificar que el paciente tenga ID válido
+    if (paciente.id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Paciente sin ID válido. Por favor, recarga la lista.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      await _cargarPacientes();
+      return;
+    }
+
+    final resultado = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => DetallePacienteScreen(paciente: paciente),
       ),
-    ).then((_) {
-      // Recargar lista cuando vuelva de detalle
-      _cargarPacientes();
-    });
+    );
+
+    // Si el detalle retornó true (se actualizó el paciente), cerrar esta pantalla también
+    // para volver al dashboard
+    if (mounted && resultado == true) {
+      // Cerrar esta pantalla (lista) y volver al dashboard
+      Navigator.of(context).pop();
+    } else if (mounted) {
+      // Si solo se vio el detalle, recargar la lista
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _cargarPacientes();
+    }
   }
 
-  void _navegarACrear() {
-    Navigator.of(context).push(
+  void _navegarAEditar(Paciente paciente) async {
+    // Verificar que el paciente tenga ID válido
+    if (paciente.id.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Error: Paciente sin ID válido. Por favor, recarga la lista.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      await _cargarPacientes();
+      return;
+    }
+
+    final resultado = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditarPacienteScreen(paciente: paciente),
+      ),
+    );
+
+    // Si se actualizó el paciente, cerrar esta pantalla y volver al dashboard
+    if (mounted && resultado == true) {
+      // Cerrar esta pantalla (lista) y volver al dashboard
+      Navigator.of(context).pop();
+    } else if (mounted) {
+      // Si solo se editó sin actualizar, recargar la lista
+      await Future.delayed(const Duration(milliseconds: 300));
+      await _cargarPacientes();
+    }
+  }
+
+  void _navegarACrear() async {
+    final resultado = await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => const CrearPacienteScreen(),
       ),
-    ).then((_) {
-      // Recargar lista cuando vuelva de crear
-      _cargarPacientes();
-    });
+    );
+
+    // Siempre recargar cuando volvamos, independientemente del resultado
+    if (!mounted) return;
+
+    // Recargar inmediatamente
+    await _cargarPacientes();
+    
+    // Si se creó exitosamente, recargar varias veces para asegurar
+    if (resultado == true) {
+      // Primera recarga después de un pequeño delay
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (mounted) {
+        await _cargarPacientes();
+      }
+      
+      // Segunda recarga después de otro delay
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        await _cargarPacientes();
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mis Pacientes'),
+        title: Text('Mis Pacientes${_pacientes.isNotEmpty ? ' (${_pacientes.length})' : ''}'),
         backgroundColor: const Color(0xFF4CAF50),
         foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _cargarPacientes,
+            onPressed: () async {
+              await _cargarPacientes();
+            },
             tooltip: 'Actualizar',
           ),
         ],
@@ -180,36 +385,24 @@ class _ListaPacientesScreenState extends State<ListaPacientesScreen> {
                 )
               : RefreshIndicator(
                   onRefresh: _cargarPacientes,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: _pacientes.length,
-                    itemBuilder: (context, index) {
-                      final paciente = _pacientes[index];
-                      return Dismissible(
-                        key: Key(paciente.id),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Icon(
-                            Icons.delete,
-                            color: Colors.white,
-                          ),
-                        ),
-                        confirmDismiss: (direction) async {
-                          await _eliminarPaciente(paciente);
-                          return false; // Ya se maneja en _eliminarPaciente
-                        },
-                        child: PacienteCard(
+                  child: Scrollbar(
+                    thumbVisibility: true, // Siempre mostrar la barra cuando hay scroll
+                    child: ListView.builder(
+                      padding: EdgeInsets.only(
+                        top: 8,
+                        bottom: MediaQuery.of(context).padding.bottom + 100, // Padding considerable para botones de Android y FAB
+                      ),
+                      itemCount: _pacientes.length,
+                      itemBuilder: (context, index) {
+                        final paciente = _pacientes[index];
+                        return PacienteCard(
                           paciente: paciente,
                           onTap: () => _navegarADetalle(paciente),
-                        ),
-                      );
-                    },
+                          onEdit: () => _navegarAEditar(paciente),
+                          onDelete: () => _eliminarPaciente(paciente),
+                        );
+                      },
+                    ),
                   ),
                 ),
       floatingActionButton: FloatingActionButton.extended(

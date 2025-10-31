@@ -179,11 +179,17 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         print('✅ Nutricionista encontrado: id=${nutriData['id']}, email=${nutriData['email']}');
       }
 
+      // IMPORTANTE: Guardar la sesión del nutricionista antes de crear el paciente
+      // porque signUp() puede cambiar la sesión actual
+      final nutricionistaSession = supabase.auth.currentSession;
+      final nutricionistaUserId = user.id;
+
       // Paso 1: Crear cuenta en Supabase Auth
       final email = 'paciente${paciente.dni}@app.com';
       
       if (kDebugMode) {
         print('📝 Creando cuenta de paciente: DNI=${paciente.dni}, Email=$email');
+        print('🔐 Guardando sesión del nutricionista antes de signUp');
       }
       
       // Crear usuario en Supabase Auth
@@ -202,6 +208,78 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
       }
 
       final authUid = authResponse.user!.id;
+
+      // VERIFICAR Y RESTAURAR LA SESIÓN DEL NUTRICIONISTA después de signUp
+      // signUp() puede cambiar la sesión actual al nuevo paciente
+      final currentUserAfterSignUp = supabase.auth.currentUser;
+      
+      // Verificar si el usuario cambió después del signUp
+      if (currentUserAfterSignUp?.id != nutricionistaUserId) {
+        if (kDebugMode) {
+          print('⚠️ Sesión cambió después de signUp');
+          print('   Usuario esperado (nutricionista): $nutricionistaUserId');
+          print('   Usuario actual: ${currentUserAfterSignUp?.id}');
+          print('   Intentando restaurar sesión del nutricionista...');
+        }
+        
+        // Intentar restaurar usando el refresh token guardado
+        // setSession() usa el refreshToken para obtener una nueva sesión
+        if (nutricionistaSession?.refreshToken != null) {
+          try {
+            // setSession con el refreshToken (no el accessToken)
+            await supabase.auth.setSession(nutricionistaSession!.refreshToken!);
+            
+            // Verificar que se restauró correctamente
+            await Future.delayed(const Duration(milliseconds: 100)); // Pequeño delay para que se actualice
+            final userAfterRestore = supabase.auth.currentUser;
+            
+            if (userAfterRestore?.id == nutricionistaUserId) {
+              if (kDebugMode) {
+                print('✅ Sesión del nutricionista restaurada exitosamente');
+              }
+            } else {
+              // Si no funcionó, intentar una segunda vez
+              if (kDebugMode) {
+                print('⚠️ Primera restauración falló, intentando de nuevo...');
+              }
+              
+              // Intentar de nuevo con un pequeño delay
+              await Future.delayed(const Duration(milliseconds: 200));
+              await supabase.auth.setSession(nutricionistaSession.refreshToken!);
+              await Future.delayed(const Duration(milliseconds: 100));
+              
+              final userAfterRetry = supabase.auth.currentUser;
+              if (userAfterRetry?.id == nutricionistaUserId) {
+                if (kDebugMode) {
+                  print('✅ Sesión restaurada en segundo intento');
+                }
+              } else {
+                throw PacientesException(
+                  'El paciente se creó exitosamente, pero la sesión cambió. '
+                  'Por favor, sal y vuelve a entrar para continuar.'
+                );
+              }
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error al restaurar sesión con setSession: $e');
+            }
+            throw PacientesException(
+              'El paciente se creó exitosamente, pero hubo un problema con la sesión. '
+              'Por favor, sal y vuelve a entrar para continuar.'
+            );
+          }
+        } else {
+          throw PacientesException(
+            'El paciente se creó exitosamente, pero la sesión cambió y no se puede restaurar. '
+            'Por favor, sal y vuelve a entrar para continuar.'
+          );
+        }
+      } else {
+        if (kDebugMode) {
+          print('✅ Sesión del nutricionista se mantuvo activa (no cambió)');
+        }
+      }
 
       if (kDebugMode) {
         print('✅ Cuenta Auth creada: auth_uid=$authUid');

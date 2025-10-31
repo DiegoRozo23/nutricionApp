@@ -43,6 +43,20 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
 
+-- Función auxiliar para verificar si un nutricionista_id pertenece al usuario autenticado
+CREATE OR REPLACE FUNCTION can_insert_paciente_for_nutricionista(p_nutricionista_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM nutricionistas
+    WHERE id = p_nutricionista_id
+      AND auth_uid = auth.uid()::uuid
+      AND activo = TRUE
+  );
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+
+
 -- ============================================
 -- PASO 3: TRIGGER PARA SINCRONIZAR auth_uid
 -- ============================================
@@ -102,17 +116,20 @@ CREATE POLICY "pacientes_select_by_nutricionista"
   );
 
 -- Los nutricionistas pueden crear pacientes
--- IMPORTANTE: Esta política verifica que el nutricionista_id sea del nutricionista autenticado
--- En WITH CHECK para INSERT, nutricionista_id se refiere directamente al valor que se inserta
-CREATE POLICY "pacientes_insert_by_nutricionista"
-  ON pacientes FOR INSERT
+-- Verifica que el nutricionista_id existe en la tabla nutricionistas
+-- y que el auth_uid del nutricionista coincide con el usuario autenticado
+DROP POLICY IF EXISTS pacientes_insert_by_nutricionista ON pacientes;
+
+CREATE POLICY pacientes_insert_by_nutricionista
+  ON pacientes
+  FOR INSERT
+  TO authenticated
   WITH CHECK (
-    -- Verificar que el nutricionista_id que se inserta pertenece a un nutricionista
-    -- cuyo auth_uid coincide con el usuario autenticado
-    nutricionista_id IN (
-      SELECT id FROM nutricionistas
-      WHERE auth_uid = auth.uid()::uuid
-        AND activo = TRUE
+    -- Solo consultar la tabla nutricionistas, NO auth.users
+    EXISTS (
+      SELECT 1 FROM nutricionistas
+      WHERE nutricionistas.id = nutricionista_id
+        AND nutricionistas.auth_uid = auth.uid()::uuid
     )
   );
 

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import '../../domain/entities/paciente.dart';
 
 /// Modelo de Paciente para la capa de datos
@@ -37,7 +38,7 @@ class PacienteModel extends Paciente {
       peso: json['peso'] != null ? (json['peso'] as num).toDouble() : null,
       talla: json['talla'] != null ? (json['talla'] as num).toDouble() : null,
       imc: json['imc'] != null ? (json['imc'] as num).toDouble() : null,
-      medidasAntropometricas: json['medidas_antropometricas'] as Map<String, dynamic>?,
+      medidasAntropometricas: _parseMedidasAntropometricas(json['medidas_antropometricas']),
       historialMedico: json['historial_medico'] as String?,
       observaciones: json['observaciones'] as String?,
       activo: json['activo'] as bool? ?? true,
@@ -136,6 +137,29 @@ class PacienteModel extends Paciente {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
+  }
+
+  /// Parsear medidas antropométricas desde JSONB (puede venir como String o Map)
+  static Map<String, dynamic>? _parseMedidasAntropometricas(dynamic data) {
+    if (data == null) return null;
+    
+    if (data is Map<String, dynamic>) {
+      return data;
+    }
+    
+    if (data is String) {
+      try {
+        final decoded = jsonDecode(data);
+        if (decoded is Map<String, dynamic>) {
+          return decoded;
+        }
+      } catch (e) {
+        // Si falla el parseo, retornar null
+        return null;
+      }
+    }
+    
+    return null;
   }
 }
 

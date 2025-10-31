@@ -124,7 +124,7 @@ class LoginScreen extends StatelessWidget {
 class LoginUseCase {
   Future<Either<Failure, User>> call(String username, String password) {
     // Lógica de validación y negocio
-    if (username.isEmpty || password.length < 4) {
+    if (username.isEmpty || password.length < 6) {
       return Left(InvalidCredentialsFailure());
     }
     return repository.login(username, password);

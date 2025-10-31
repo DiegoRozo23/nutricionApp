@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../domain/usecases/crear_paciente_usecase.dart';
 import '../../data/repositories/pacientes_repository_impl.dart';
 import '../../domain/repositories/pacientes_repository.dart';
+import '../../../auth/domain/entities/paciente.dart';
 import '../widgets/formulario_paciente.dart';
+import 'editar_paciente_screen.dart';
 
 /// Pantalla para crear un nuevo paciente
 class CrearPacienteScreen extends StatefulWidget {
@@ -55,21 +57,56 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
       _isLoading = false;
     });
 
-    if (result is PacientesSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Paciente creado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.of(context).pop(true); // Volver a la lista
+    if (result is PacientesSuccess<Paciente>) {
+      final pacienteCreado = result.data;
+      
+      // Esperar un momento antes de navegar para evitar transiciones bruscas
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      // Navegar inmediatamente a la pantalla de edición para completar los datos
+      if (mounted) {
+        final editResult = await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => EditarPacienteScreen(
+              paciente: pacienteCreado,
+            ),
+          ),
+        );
+        
+        // Después de editar, esperar un momento y cerrar esta pantalla
+        if (mounted) {
+          await Future.delayed(const Duration(milliseconds: 300));
+          
+          if (editResult == true) {
+            // Cerrar esta pantalla (crear) y volver al dashboard
+            Navigator.of(context).pop(true);
+          } else {
+            // Si no hubo edición exitosa, solo cerrar esta pantalla
+            Navigator.of(context).pop();
+          }
+        }
+      }
     } else if (result is PacientesFailure) {
+      // Si el error menciona sesión, es un caso especial donde el paciente se creó
+      final isSessionError = result.message.contains('sesión') || 
+                            result.message.contains('Sesión');
+      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.message),
-          backgroundColor: Colors.red,
+          content: Text(
+            isSessionError 
+              ? 'Paciente creado. Por favor, sal y vuelve a entrar para ver los cambios.'
+              : result.message
+          ),
+          backgroundColor: isSessionError ? Colors.orange : Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
+      
+      // Si es error de sesión, aún así volver para que intente recargar
+      if (isSessionError) {
+        Navigator.of(context).pop(true);
+      }
     }
   }
 
@@ -147,14 +184,6 @@ class _FormularioSimplePacienteState extends State<_FormularioSimplePaciente> {
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Solo necesitamos el DNI y una contraseña. El paciente completará su perfil después de iniciar sesión.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[600],
-                  ),
-              textAlign: TextAlign.center,
-            ),
             const SizedBox(height: 32),
             // Campo DNI
             TextFormField(
@@ -183,7 +212,7 @@ class _FormularioSimplePacienteState extends State<_FormularioSimplePaciente> {
               controller: _passwordController,
               decoration: InputDecoration(
                 labelText: 'Contraseña inicial *',
-                hintText: 'Mínimo 4 caracteres',
+                hintText: 'Mínimo 6 caracteres',
                 prefixIcon: const Icon(Icons.lock),
                 suffixIcon: IconButton(
                   icon: Icon(
@@ -204,8 +233,8 @@ class _FormularioSimplePacienteState extends State<_FormularioSimplePaciente> {
                 if (value == null || value.isEmpty) {
                   return 'La contraseña es obligatoria';
                 }
-                if (value.length < 4) {
-                  return 'La contraseña debe tener al menos 4 caracteres';
+                if (value.length < 6) {
+                  return 'La contraseña debe tener al menos 6 caracteres';
                 }
                 return null;
               },

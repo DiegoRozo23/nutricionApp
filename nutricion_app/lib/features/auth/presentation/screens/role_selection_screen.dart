@@ -54,12 +54,14 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         ),
         child: SafeArea(
           child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo o icono
+            child: Scrollbar(
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Logo o icono
                   Container(
                     width: 120,
                     height: 120,
@@ -151,12 +153,13 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                     ),
                   ),
                 ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+              ), // Column
+            ), // SingleChildScrollView
+              ), // Scrollbar
+            ), // Center
+          ), // SafeArea
+        ), // Container
+    ); // Scaffold
   }
 }
 

@@ -128,9 +128,11 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
+          child: Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
@@ -253,6 +255,7 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                   },
                 ),
               ],
+            ),
             ),
           ),
         ),

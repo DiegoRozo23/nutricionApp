@@ -8,8 +8,7 @@ class CrearPacienteUseCase {
   const CrearPacienteUseCase(this.repository);
 
   /// Ejecutar creación de paciente
-  /// Solo crea la cuenta en Supabase Auth con DNI y contraseña
-  /// El paciente completará su perfil después de iniciar sesión
+  /// Crea la cuenta en Supabase Auth y el registro en la base de datos
   Future<PacientesResult<Paciente>> call({
     required String dni,
     required String password,
@@ -39,17 +38,16 @@ class CrearPacienteUseCase {
       );
     }
 
-    if (password.length < 4) {
+    if (password.length < 6) {
       return PacientesFailure(
-        message: 'La contraseña debe tener al menos 4 caracteres',
+        message: 'La contraseña debe tener al menos 6 caracteres',
         code: 'weak_password',
       );
     }
 
-    // Crear objeto paciente mínimo (solo DNI)
-    // El resto se completará cuando el paciente inicie sesión
+    // Crear objeto paciente
     final paciente = Paciente(
-      id: '', // Se creará cuando complete su perfil
+      id: '', // Se asignará al crear en la BD
       nombre: nombre ?? '',
       apellidos: apellidos ?? '',
       dni: dni,

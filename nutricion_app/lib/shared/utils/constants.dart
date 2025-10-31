@@ -10,7 +10,7 @@ class AppConstants {
   static const String keyRememberMe = 'remember_me';
   
   // Validaciones
-  static const int minPasswordLength = 4;
+  static const int minPasswordLength = 6;
   static const int maxPasswordLength = 50;
   
   // Errores comunes

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../domain/usecases/logout_usecase.dart';
 import '../../data/repositories/auth_repository_impl.dart';
+import '../../domain/repositories/auth_repository.dart';
 import '../../../../shared/services/storage_service.dart';
+import '../../../../shared/services/supabase_service.dart';
+import '../../domain/entities/nutricionista.dart';
+import '../../domain/entities/paciente.dart';
 import 'role_selection_screen.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PacientePanel extends StatefulWidget {
   const PacientePanel({super.key});
@@ -13,11 +18,140 @@ class PacientePanel extends StatefulWidget {
 
 class _PacientePanelState extends State<PacientePanel> {
   late final LogoutUseCase _logoutUseCase;
+  final AuthRepository _authRepository = AuthRepositoryImpl();
+  
+  Nutricionista? _nutricionista;
+  Paciente? _paciente;
+  bool _isLoadingNutricionista = true;
 
   @override
   void initState() {
     super.initState();
-    _logoutUseCase = LogoutUseCase(AuthRepositoryImpl());
+    _logoutUseCase = LogoutUseCase(_authRepository);
+    _cargarDatos();
+  }
+
+  Future<void> _cargarDatos() async {
+    // Obtener el paciente actual
+    final paciente = await _authRepository.getCurrentPaciente();
+    
+    if (!mounted) return;
+    
+    setState(() {
+      _paciente = paciente;
+    });
+
+    // Debug: verificar datos del paciente
+    if (paciente != null) {
+      debugPrint('🔍 Paciente obtenido:');
+      debugPrint('   - ID: ${paciente.id}');
+      debugPrint('   - Nombre: ${paciente.nombreCompleto}');
+      debugPrint('   - Nutricionista ID: ${paciente.nutricionistaId}');
+    } else {
+      debugPrint('⚠️ No se obtuvo paciente');
+    }
+
+    // Si el paciente tiene nutricionista asignado, obtenerlo
+    if (paciente?.nutricionistaId != null && paciente!.nutricionistaId!.isNotEmpty) {
+      debugPrint('📋 Intentando cargar nutricionista: ${paciente.nutricionistaId}');
+      await _cargarNutricionista(paciente.nutricionistaId!);
+    } else {
+      debugPrint('⚠️ Paciente no tiene nutricionista_id asignado');
+      setState(() {
+        _isLoadingNutricionista = false;
+      });
+    }
+  }
+
+  Future<void> _cargarNutricionista(String nutricionistaId) async {
+    try {
+      final supabase = supabaseService.client;
+      
+      debugPrint('🔍 Consultando nutricionista con ID: $nutricionistaId');
+      
+      // Intentar obtener el nutricionista usando JOIN con pacientes para que RLS funcione
+      // O consultar directamente si hay política RLS que lo permita
+      final nutriResponse = await supabase
+          .from('nutricionistas')
+          .select()
+          .eq('id', nutricionistaId)
+          .maybeSingle();
+
+      if (nutriResponse != null && nutriResponse.isNotEmpty) {
+        final nutriData = nutriResponse as Map<String, dynamic>;
+        
+        debugPrint('✅ Nutricionista encontrado: ${nutriData['nombre']} ${nutriData['apellidos']}');
+        
+        setState(() {
+          _nutricionista = Nutricionista(
+            id: nutriData['id'] as String,
+            authUid: nutriData['auth_uid'] as String,
+            nombre: nutriData['nombre'] as String,
+            apellidos: nutriData['apellidos'] as String,
+            dni: nutriData['dni'] as String?,
+            especialidad: nutriData['especialidad'] as String?,
+            privilegio: nutriData['privilegio'] as String? ?? 'nutricionista',
+            username: nutriData['username'] as String?,
+            email: nutriData['email'] as String?,
+            telefono: nutriData['telefono'] as String?,
+            activo: nutriData['activo'] as bool? ?? true,
+            createdAt: DateTime.parse(nutriData['created_at'] as String),
+            updatedAt: DateTime.parse(nutriData['updated_at'] as String),
+          );
+          _isLoadingNutricionista = false;
+        });
+      } else {
+        debugPrint('⚠️ Nutricionista no encontrado o sin permisos RLS');
+        // Intentar obtener a través de un JOIN con pacientes
+        try {
+          final pacienteResponse = await supabase
+              .from('pacientes')
+              .select('nutricionista_id, nutricionistas(*)')
+              .eq('auth_uid', supabase.auth.currentUser?.id ?? '')
+              .maybeSingle();
+          
+          if (pacienteResponse != null && pacienteResponse['nutricionistas'] != null) {
+            final nutriData = pacienteResponse['nutricionistas'] as Map<String, dynamic>;
+            debugPrint('✅ Nutricionista encontrado vía JOIN: ${nutriData['nombre']}');
+            
+            setState(() {
+              _nutricionista = Nutricionista(
+                id: nutriData['id'] as String,
+                authUid: nutriData['auth_uid'] as String,
+                nombre: nutriData['nombre'] as String,
+                apellidos: nutriData['apellidos'] as String,
+                dni: nutriData['dni'] as String?,
+                especialidad: nutriData['especialidad'] as String?,
+                privilegio: nutriData['privilegio'] as String? ?? 'nutricionista',
+                username: nutriData['username'] as String?,
+                email: nutriData['email'] as String?,
+                telefono: nutriData['telefono'] as String?,
+                activo: nutriData['activo'] as bool? ?? true,
+                createdAt: DateTime.parse(nutriData['created_at'] as String),
+                updatedAt: DateTime.parse(nutriData['updated_at'] as String),
+              );
+              _isLoadingNutricionista = false;
+            });
+          } else {
+            setState(() {
+              _isLoadingNutricionista = false;
+            });
+          }
+        } catch (joinError) {
+          debugPrint('❌ Error en JOIN: $joinError');
+          setState(() {
+            _isLoadingNutricionista = false;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error al cargar nutricionista: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingNutricionista = false;
+        });
+      }
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -89,6 +223,8 @@ class _PacientePanelState extends State<PacientePanel> {
         ],
       ),
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
@@ -100,183 +236,221 @@ class _PacientePanelState extends State<PacientePanel> {
           ),
         ),
         child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  '¡Bienvenido/a!',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF1565C0),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Tu plan nutricional personalizado',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Información del Nutricionista
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.grey.shade200),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.medical_services,
-                          color: Color(0xFF4CAF50),
-                          size: 32,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Dr. Nutricionista',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'Especialista en Nutrición',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Plan Nutricional Actual
-                const Text(
-                  'Mi Plan Nutricional',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF4CAF50).withOpacity(0.05),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: const Color(0xFF4CAF50).withOpacity(0.3),
-                      width: 2,
+          child: Scrollbar(
+            thumbVisibility: true,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '¡Bienvenido/a!',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1565C0),
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.info_outline,
-                            color: Color(0xFF4CAF50),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tu plan nutricional personalizado',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey.shade600,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Información del Nutricionista
+                  const Text(
+                    'Mi Nutricionista',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _isLoadingNutricionista
+                      ? Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
                           ),
-                          const SizedBox(width: 8),
-                          const Text(
-                            'Plan Actual',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF4CAF50),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      : _nutricionista == null
+                          ? Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade200),
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.person_off_outlined,
+                                      color: Colors.grey,
+                                      size: 32,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  const Expanded(
+                                    child: Text(
+                                      'No tienes nutricionista asignado',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : Container(
+                              padding: const EdgeInsets.all(16),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.grey.shade200),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.05),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF4CAF50).withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.medical_services,
+                                      color: Color(0xFF4CAF50),
+                                      size: 32,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          _nutricionista!.nombreCompleto,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        if (_nutricionista!.especialidad != null &&
+                                            _nutricionista!.especialidad!.isNotEmpty) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _nutricionista!.especialidad!,
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ] else ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Nutricionista',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                        if (_nutricionista!.email != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            _nutricionista!.email!,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                  const SizedBox(height: 24),
+
+                  // Botón Ver Plan Nutricional
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Próximamente'),
+                            backgroundColor: Color(0xFF2196F3),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      const Text(
-                        'No tienes un plan nutricional asignado aún.',
+                        );
+                      },
+                      icon: const Icon(Icons.restaurant_menu, size: 24),
+                      label: const Text(
+                        'Ver Plan Nutricional',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      TextButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Contactar nutricionista (Próximamente)')),
-                          );
-                        },
-                        icon: const Icon(Icons.message_outlined),
-                        label: const Text('Contactar a mi nutricionista'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2196F3),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
                       ),
-                    ],
+                    ),
                   ),
-                ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Acciones
-                const Text(
-                  'Acciones',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                  // Acciones
+                  const Text(
+                    'Acciones',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
+                  const SizedBox(height: 16),
 
-                _ActionCard(
-                  title: 'Ver Historial',
-                  subtitle: 'Planes nutricionales anteriores',
-                  icon: Icons.history,
-                  color: const Color(0xFF2196F3),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Historial (Próximamente)')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _ActionCard(
-                  title: 'Chat con Nutricionista',
-                  subtitle: 'Envía mensajes a tu nutricionista',
-                  icon: Icons.chat_bubble_outline,
-                  color: const Color(0xFF9C27B0),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chat (Próximamente)')),
-                    );
-                  },
-                ),
-              ],
+                  _ActionCard(
+                    title: 'Chat con Nutricionista',
+                    subtitle: 'Envía mensajes a tu nutricionista',
+                    icon: Icons.chat_bubble_outline,
+                    color: const Color(0xFF9C27B0),
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Chat (Próximamente)')),
+                      );
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
         ),

@@ -167,12 +167,12 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
   }
 
   String _getLabelText() {
-    return widget.role == 'nutricionista' ? 'Usuario' : 'DNI';
+    return widget.role == 'nutricionista' ? 'Usuario o Correo' : 'DNI';
   }
 
   String _getHintText() {
     return widget.role == 'nutricionista' 
-        ? 'Ingresa tu usuario' 
+        ? 'Ingresa tu usuario o correo' 
         : 'Ingresa tu DNI';
   }
 
@@ -205,13 +205,15 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
         ),
         child: SafeArea(
           child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
+            child: Scrollbar(
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
                     // Icono del rol
                     Container(
                       width: 100,
@@ -243,17 +245,46 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                     ),
                     const SizedBox(height: 48),
 
+                    // Label de Usuario/DNI (fuera del campo)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            widget.role == 'nutricionista' 
+                                ? Icons.person_outline 
+                                : Icons.badge_outlined,
+                            size: 20,
+                            color: Colors.grey.shade700,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            _getLabelText(),
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     // Campo de Usuario/DNI
                     TextFormField(
                       controller: _credentialController,
                       decoration: InputDecoration(
-                        labelText: _getLabelText(),
                         hintText: _getHintText(),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         prefixIcon: Icon(
                           widget.role == 'nutricionista' 
                               ? Icons.person_outline 
                               : Icons.badge_outlined,
                         ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -265,15 +296,37 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
+                    // Label de Contraseña (fuera del campo)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.lock_outline,
+                            size: 20,
+                            color: Colors.grey.shade700,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Contraseña',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     // Campo de Contraseña
                     TextFormField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
                       decoration: InputDecoration(
-                        labelText: 'Contraseña',
                         hintText: 'Ingresa tu contraseña',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -287,6 +340,11 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                             });
                           },
                         ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
                       validator: (value) => Validators.password(value),
                     ),
@@ -339,13 +397,14 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                       ),
                     ),
                   ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+                ), // Column
+              ), // Form
+            ), // SingleChildScrollView
+              ), // Scrollbar
+            ), // Center
+          ), // SafeArea
+        ), // Container
+    ); // Scaffold
   }
 }
 

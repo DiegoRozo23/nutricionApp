@@ -57,9 +57,39 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String password,
   }) async {
     try {
-      // Primero, autenticar con Supabase Auth usando email/username
+      // Determinar si la credencial es email o username
+      String emailToUse = credential;
+      
+      // Si no contiene @, es un username y necesitamos buscar el email
+      if (!credential.contains('@')) {
+        if (kDebugMode) {
+          print('🔍 Detectado username: $credential');
+        }
+        
+        // Buscar nutricionista por username para obtener su email
+        final nutriByUsername = await supabase
+            .from('nutricionistas')
+            .select('email')
+            .eq('username', credential)
+            .maybeSingle();
+        
+        if (nutriByUsername == null || nutriByUsername['email'] == null) {
+          if (kDebugMode) {
+            print('❌ Usuario no encontrado con username: $credential');
+          }
+          throw AppAuthException('Usuario no encontrado');
+        }
+        
+        emailToUse = nutriByUsername['email'] as String;
+        
+        if (kDebugMode) {
+          print('✅ Email encontrado: $emailToUse');
+        }
+      }
+      
+      // Primero, autenticar con Supabase Auth usando email
       final response = await supabase.auth.signInWithPassword(
-        email: credential, // Supabase espera email
+        email: emailToUse,
         password: password,
       );
 
@@ -81,8 +111,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           print('⚠️ Nutricionista no encontrado por auth_uid. Intentando sincronizar automáticamente...');
         }
         
-        // Buscar por email (del usuario autenticado o de la credencial)
-        final email = response.user!.email ?? credential;
+        // Buscar por email (del usuario autenticado o del email resuelto)
+        final email = response.user!.email ?? emailToUse;
         final nutriByEmail = await supabase
             .from('nutricionistas')
             .select()
@@ -169,6 +199,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         'Error al buscar nutricionista: ${e.message}',
         code: e.code,
       );
+    } on AppAuthException {
+      // Re-lanzar AppAuthException sin modificar
+      rethrow;
     } catch (e) {
       if (kDebugMode) {
         print('Error inesperado: $e');

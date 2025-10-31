@@ -39,6 +39,7 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
     double? peso,
     double? talla,
     double? imc,
+    Map<String, dynamic>? medidasAntropometricas,
     String? historialMedico,
     String? observaciones,
   }) async {
@@ -61,7 +62,7 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
       peso: peso,
       talla: talla,
       imc: imc,
-      medidasAntropometricas: widget.paciente.medidasAntropometricas,
+      medidasAntropometricas: medidasAntropometricas ?? widget.paciente.medidasAntropometricas,
       historialMedico: historialMedico,
       observaciones: observaciones,
       activo: widget.paciente.activo,
@@ -73,19 +74,28 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
 
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = false;
-    });
-
     if (result is PacientesSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Paciente actualizado correctamente'),
-          backgroundColor: Colors.green,
-        ),
-      );
-      Navigator.of(context).pop(true); // Volver al detalle
+      // Mantener el overlay visible durante todo el proceso
+      // Actualizar mensaje
+      setState(() {
+        // El overlay ya está visible con _isLoading = true
+      });
+      
+      // Esperar un momento para que se guarde en la BD
+      await Future.delayed(const Duration(milliseconds: 600));
+      
+      // Cerrar esta pantalla (editar) y volver
+      // El contexto que recibió el resultado manejará el resto de la navegación
+      if (mounted) {
+        // Cerrar solo esta pantalla y retornar true para indicar éxito
+        // El overlay desaparecerá automáticamente cuando se cierre la pantalla
+        Navigator.of(context).pop(true);
+      }
     } else if (result is PacientesFailure) {
+      // Solo ocultar el overlay si hay un error
+      setState(() {
+        _isLoading = false;
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result.message),
@@ -104,23 +114,67 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
         foregroundColor: Colors.white,
       ),
       resizeToAvoidBottomInset: true,
-      body: SafeArea(
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : FormularioPaciente(
-                isEditing: true,
-                nombreInicial: widget.paciente.nombre,
-                apellidosInicial: widget.paciente.apellidos,
-                dniInicial: widget.paciente.dni,
-                sexoInicial: widget.paciente.sexo,
-                edadInicial: widget.paciente.edad,
-                pesoInicial: widget.paciente.peso,
-                tallaInicial: widget.paciente.talla,
-                imcInicial: widget.paciente.imc,
-                historialMedicoInicial: widget.paciente.historialMedico,
-                observacionesInicial: widget.paciente.observaciones,
-                onSubmit: _actualizarPaciente,
+      body: Stack(
+        children: [
+          SafeArea(
+            child: FormularioPaciente(
+              isEditing: true,
+              nombreInicial: widget.paciente.nombre,
+              apellidosInicial: widget.paciente.apellidos,
+              dniInicial: widget.paciente.dni,
+              sexoInicial: widget.paciente.sexo,
+              edadInicial: widget.paciente.edad,
+              pesoInicial: widget.paciente.peso,
+              tallaInicial: widget.paciente.talla,
+              imcInicial: widget.paciente.imc,
+              medidasAntropometricasInicial: widget.paciente.medidasAntropometricas,
+              historialMedicoInicial: widget.paciente.historialMedico,
+              observacionesInicial: widget.paciente.observaciones,
+              onSubmit: _actualizarPaciente,
+            ),
+          ),
+          // Overlay de carga
+          if (_isLoading)
+            Container(
+              color: Colors.black.withOpacity(0.7),
+              child: Center(
+                child: Card(
+                  elevation: 8,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(32),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+                          strokeWidth: 3,
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Guardando cambios...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Paciente actualizado correctamente',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
+            ),
+        ],
       ),
     );
   }
