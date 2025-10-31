@@ -147,12 +147,16 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
       }
 
       // Buscar el nutricionista por auth_uid
-      final nutriData = await supabase
+      final nutriResponse = await supabase
           .from('nutricionistas')
           .select('id')
-          .eq('auth_uid', user.id)
-          .single();
+          .eq('auth_uid', user.id);
 
+      if (nutriResponse == null || nutriResponse.isEmpty) {
+        throw PacientesException('Nutricionista no encontrado en la base de datos');
+      }
+
+      final nutriData = nutriResponse.first as Map<String, dynamic>;
       final nutricionistaId = nutriData['id'] as String;
 
       // Paso 1: Crear cuenta en Supabase Auth
