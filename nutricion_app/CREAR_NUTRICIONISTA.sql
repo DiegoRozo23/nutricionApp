@@ -33,49 +33,7 @@ SELECT crear_nutricionista_completo(
 --   "error": "Mensaje de error"
 -- }
 
--- ============================================
--- OPCIÓN 2: Si YA tienes un usuario en auth.users
--- ============================================
--- Si ya creaste el usuario en Authentication → Users,
--- usa esta función pasando el auth_uid existente:
 
--- Primero, obtén el UUID del usuario de auth.users
--- Ve a Authentication → Users y copia el User ID
--- Ejemplo: 37f1f3ef-3562-4983-9159-0c8d068156bf
-
-SELECT crear_nutricionista_desde_auth_uid(
-  '37f1f3ef-3562-4983-9159-0c8d068156bf'::uuid, -- auth_uid existente
-  'Dr. Ana',                                      -- nombre
-  'García',                                       -- apellidos
-  'ana.garcia@nutricionapp.com',                 -- email
-  '87654321',                                     -- dni (opcional)
-  'agarcia',                                      -- username (opcional)
-  'Nutrición Deportiva',                          -- especialidad (opcional)
-  '+34 600 123 456',                             -- telefono (opcional)
-  'nutricionista'                                 -- privilegio (opcional)
-);
-
--- ============================================
--- VERIFICAR QUE SE CREÓ CORRECTAMENTE
--- ============================================
--- Después de crear, puedes verificar:
-
-SELECT 
-  id,
-  auth_uid::text,
-  nombre,
-  apellidos,
-  email,
-  username,
-  especialidad,
-  activo,
-  created_at
-FROM nutricionistas
-WHERE email = 'nutricionista@nutricionapp.com';
-
--- ============================================
--- MÁS EJEMPLOS
--- ============================================
 
 -- Ejemplo 2: Nutricionista con todos los campos opcionales
 SELECT crear_nutricionista_completo(
@@ -97,19 +55,3 @@ SELECT crear_nutricionista_completo(
   'Dr. Mínimo',
   'Ejemplo'
 );
-
--- ============================================
--- NOTAS IMPORTANTES
--- ============================================
---
--- 1. La función crear_nutricionista_completo() hace TODO automáticamente
--- 2. El email DEBE ser único en auth.users
--- 3. El username DEBE ser único en la tabla nutricionistas
--- 4. El DNI debe seguir el formato correcto
--- 5. Si activo = FALSE, el nutricionista no podrá iniciar sesión
--- 6. created_at y updated_at se llenan automáticamente con triggers
--- 7. La contraseña debe tener al menos 6 caracteres
--- 8. Si el email ya existe en auth.users, la función lo detecta y reutiliza
---
--- ============================================
-
