@@ -146,18 +146,38 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         throw PacientesException('No hay usuario autenticado');
       }
 
+      // 🔍 DEBUG: Verificar el auth.uid() real desde Flutter
+      if (kDebugMode) {
+        print('🧠 Usuario actual en Supabase Auth: ${user.id}');
+      }
+
       // Buscar el nutricionista por auth_uid
       final nutriResponse = await supabase
           .from('nutricionistas')
-          .select('id')
+          .select('id, auth_uid, email')
           .eq('auth_uid', user.id);
 
       if (nutriResponse == null || nutriResponse.isEmpty) {
-        throw PacientesException('Nutricionista no encontrado en la base de datos');
+        // 🔍 DEBUG: Mostrar información adicional si no se encuentra
+        if (kDebugMode) {
+          print('❌ ERROR: Nutricionista no encontrado con auth_uid: ${user.id}');
+          print('💡 Verifica que el auth_uid en la tabla nutricionistas coincida con este UUID');
+          print('💡 Ejecuta en Supabase SQL Editor:');
+          print('   SELECT id, auth_uid, email FROM nutricionistas;');
+          print('   UPDATE nutricionistas SET auth_uid = \'${user.id}\' WHERE email = \'TU_EMAIL_AQUI\';');
+        }
+        throw PacientesException(
+          'Nutricionista no encontrado. Verifica que el auth_uid en la tabla nutricionistas coincida con tu usuario autenticado.'
+        );
       }
 
       final nutriData = nutriResponse.first as Map<String, dynamic>;
       final nutricionistaId = nutriData['id'] as String;
+      
+      // 🔍 DEBUG: Confirmar que se encontró el nutricionista
+      if (kDebugMode) {
+        print('✅ Nutricionista encontrado: id=${nutriData['id']}, email=${nutriData['email']}');
+      }
 
       // Paso 1: Crear cuenta en Supabase Auth
       // Usamos el DNI como email (formato: pacienteDNI@app.com)

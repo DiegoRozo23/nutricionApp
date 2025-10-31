@@ -4,23 +4,58 @@
 -- Ejecuta este script para verificar que todo esté correcto
 -- ============================================
 
--- 1. Verificar que el usuario autenticado tiene un nutricionista asociado
+-- 🔍 PASO 1: Ver el UUID del usuario autenticado actual
+SELECT 
+  auth.uid()::text AS usuario_autenticado_actual,
+  'Este es el UUID que Flutter está usando' AS descripcion;
+
+-- 🔍 PASO 2: Verificar TODOS los nutricionistas (para comparar)
 SELECT 
   id,
-  auth_uid,
+  auth_uid::text,
   nombre,
   apellidos,
-  email
+  email,
+  CASE 
+    WHEN auth_uid = auth.uid()::uuid THEN '✅ COINCIDE - Este es tu nutricionista'
+    ELSE '❌ NO COINCIDE'
+  END AS estado_coincidencia
+FROM nutricionistas
+ORDER BY estado_coincidencia DESC;
+
+-- 🔍 PASO 3: Verificar que el usuario autenticado tiene un nutricionista asociado
+SELECT 
+  id,
+  auth_uid::text,
+  nombre,
+  apellidos,
+  email,
+  '✅ Nutricionista encontrado' AS estado
 FROM nutricionistas
 WHERE auth_uid = auth.uid()::uuid;
 
--- 2. Si el query anterior NO devuelve ningún resultado,
--- significa que el usuario autenticado NO está asociado a un nutricionista.
--- En ese caso, necesitas:
---   a) Verificar que el usuario tenga una sesión activa en Supabase
---   b) Verificar que existe un registro en nutricionistas con auth_uid = auth.uid()
+-- ============================================
+-- 🔧 CORRECCIÓN (si el PASO 3 no devuelve resultados)
+-- ============================================
+-- Si el PASO 3 NO devuelve ningún resultado, significa que el usuario autenticado
+-- NO está asociado a un nutricionista. Sigue estos pasos:
+--
+-- 1. En Flutter, busca en la consola el print:
+--    "🧠 Usuario actual en Supabase Auth: [UUID]"
+--
+-- 2. Copia ese UUID y ejecuta este UPDATE (reemplaza los valores):
+--
+-- UPDATE nutricionistas
+-- SET auth_uid = 'EL_UUID_DE_FLUTTER_AQUI'::uuid
+-- WHERE email = 'tu_email@ejemplo.com';
+--
+-- 3. Verifica el cambio:
+-- SELECT id, auth_uid::text, email FROM nutricionistas;
+--
+-- 4. Intenta crear el paciente nuevamente desde la app.
+-- ============================================
 
--- 3. Verificar todas las políticas RLS en pacientes
+-- 🔍 PASO 4: Verificar todas las políticas RLS en pacientes
 SELECT 
   schemaname,
   tablename,
