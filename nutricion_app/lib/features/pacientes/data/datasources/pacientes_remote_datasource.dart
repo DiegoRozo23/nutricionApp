@@ -91,12 +91,16 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
   @override
   Future<PacienteModel> obtenerPacientePorId(String id) async {
     try {
-      final pacienteData = await supabase
+      final pacienteResponse = await supabase
           .from('pacientes')
           .select()
-          .eq('id', id)
-          .single();
+          .eq('id', id);
 
+      if (pacienteResponse == null || pacienteResponse.isEmpty) {
+        throw PacientesException('Paciente no encontrado', code: 'PGRST116');
+      }
+
+      final pacienteData = pacienteResponse.first as Map<String, dynamic>;
       return PacienteModel.fromSupabaseRow(pacienteData);
     } on PostgrestException catch (e) {
       if (kDebugMode) {
@@ -253,13 +257,17 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         // updated_at se actualiza automáticamente por el trigger
       };
 
-      final updatedData = await supabase
+      final updatedResponse = await supabase
           .from('pacientes')
           .update(dataToUpdate)
           .eq('id', paciente.id)
-          .select()
-          .single();
+          .select();
 
+      if (updatedResponse == null || updatedResponse.isEmpty) {
+        throw PacientesException('Paciente no encontrado');
+      }
+
+      final updatedData = updatedResponse.first as Map<String, dynamic>;
       return PacienteModel.fromSupabaseRow(updatedData);
     } on PostgrestException catch (e) {
       if (kDebugMode) {
