@@ -229,6 +229,15 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
 
       if (kDebugMode) {
         print('📝 Insertando paciente en tabla con nutricionista_id=$nutricionistaId');
+        print('🔍 Verificando política RLS:');
+        print('   - Usuario autenticado: ${user.id}');
+        print('   - Nutricionista auth_uid en tabla: ${nutriData['auth_uid']}');
+        print('   - ¿Coinciden? ${user.id == nutriData['auth_uid']}');
+        if (user.id != nutriData['auth_uid']) {
+          print('   ⚠️ DESINCRONIZACIÓN DETECTADA!');
+          print('   💡 Ejecuta en Supabase SQL Editor:');
+          print('      UPDATE nutricionistas SET auth_uid = \'${user.id}\' WHERE id = \'$nutricionistaId\';');
+        }
       }
 
       // Insertar paciente en la tabla
