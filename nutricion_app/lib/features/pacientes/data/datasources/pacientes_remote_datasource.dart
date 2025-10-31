@@ -140,8 +140,46 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         throw PacientesException('El DNI es obligatorio para crear un paciente');
       }
 
-      // SOLO crear cuenta en Supabase Auth con DNI y contraseña
-      // El paciente completará su perfil después de iniciar sesión
+      // Obtener el nutricionista actual
+      final user = supabase.auth.currentUser;
+      if (user == null) {
+        throw PacientesException('No hay usuario autenticado');
+      }
+
+      // 🔍 DEBUG: Verificar el auth.uid() real desde Flutter
+      if (kDebugMode) {
+        print('🧠 Usuario actual en Supabase Auth: ${user.id}');
+      }
+
+      // Buscar el nutricionista por auth_uid
+      final nutriResponse = await supabase
+          .from('nutricionistas')
+          .select('id, auth_uid, email')
+          .eq('auth_uid', user.id);
+
+      if (nutriResponse == null || nutriResponse.isEmpty) {
+        // 🔍 DEBUG: Mostrar información adicional si no se encuentra
+        if (kDebugMode) {
+          print('❌ ERROR: Nutricionista no encontrado con auth_uid: ${user.id}');
+          print('💡 Verifica que el auth_uid en la tabla nutricionistas coincida con este UUID');
+          print('💡 Ejecuta en Supabase SQL Editor:');
+          print('   SELECT id, auth_uid, email FROM nutricionistas;');
+          print('   UPDATE nutricionistas SET auth_uid = \'${user.id}\' WHERE email = \'TU_EMAIL_AQUI\';');
+        }
+        throw PacientesException(
+          'Nutricionista no encontrado. Verifica que el auth_uid en la tabla nutricionistas coincida con tu usuario autenticado.'
+        );
+      }
+
+      final nutriData = nutriResponse.first as Map<String, dynamic>;
+      final nutricionistaId = nutriData['id'] as String;
+      
+      // 🔍 DEBUG: Confirmar que se encontró el nutricionista
+      if (kDebugMode) {
+        print('✅ Nutricionista encontrado: id=${nutriData['id']}, email=${nutriData['email']}');
+      }
+
+      // Paso 1: Crear cuenta en Supabase Auth
       final email = 'paciente${paciente.dni}@app.com';
       
       if (kDebugMode) {
@@ -166,34 +204,53 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
       final authUid = authResponse.user!.id;
 
       if (kDebugMode) {
-        print('✅ Cuenta de paciente creada exitosamente: auth_uid=$authUid');
+        print('✅ Cuenta Auth creada: auth_uid=$authUid');
+      }
+
+      // Paso 2: Crear registro en tabla pacientes automáticamente
+      final pacienteDataToInsert = {
+        'auth_uid': authUid,
+        'nutricionista_id': nutricionistaId,
+        'nombre': paciente.nombre,
+        'apellidos': paciente.apellidos,
+        'dni': paciente.dni,
+        if (paciente.sexo != null) 'sexo': paciente.sexo,
+        if (paciente.edad != null) 'edad': paciente.edad,
+        if (paciente.peso != null) 'peso': paciente.peso,
+        if (paciente.talla != null) 'talla': paciente.talla,
+        if (paciente.imc != null) 'imc': paciente.imc,
+        if (paciente.medidasAntropometricas != null)
+          'medidas_antropometricas': paciente.medidasAntropometricas,
+        if (paciente.historialMedico != null)
+          'historial_medico': paciente.historialMedico,
+        if (paciente.observaciones != null) 'observaciones': paciente.observaciones,
+        'activo': paciente.activo,
+      };
+
+      if (kDebugMode) {
+        print('📝 Insertando paciente en tabla con nutricionista_id=$nutricionistaId');
+      }
+
+      // Insertar paciente en la tabla
+      final insertResponse = await supabase
+          .from('pacientes')
+          .insert(pacienteDataToInsert)
+          .select();
+
+      if (insertResponse == null || insertResponse.isEmpty) {
+        throw PacientesException('Error al crear el paciente en la base de datos');
+      }
+
+      final insertedData = insertResponse.first as Map<String, dynamic>;
+
+      if (kDebugMode) {
+        print('✅ Paciente creado exitosamente en la tabla');
         print('💡 El paciente puede iniciar sesión con:');
         print('   Email: $email');
         print('   Contraseña: [la que proporcionaste]');
       }
 
-      // Retornar un PacienteModel básico con solo DNI y auth_uid
-      // El paciente completará el resto después de iniciar sesión
-      final now = DateTime.now();
-      return PacienteModel(
-        id: '', // Se creará cuando complete su perfil
-        authUid: authUid,
-        nutricionistaId: null, // Se asignará cuando complete su perfil
-        nombre: '',
-        apellidos: '',
-        dni: paciente.dni,
-        sexo: null,
-        edad: null,
-        peso: null,
-        talla: null,
-        imc: null,
-        medidasAntropometricas: null,
-        historialMedico: null,
-        observaciones: null,
-        activo: true,
-        createdAt: now,
-        updatedAt: now,
-      );
+      return PacienteModel.fromSupabaseRow(insertedData);
     } on PostgrestException catch (e) {
       if (kDebugMode) {
         print('Error de Postgrest: ${e.message}');

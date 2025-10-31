@@ -113,17 +113,8 @@ CREATE POLICY "pacientes_insert_by_nutricionista"
     nutricionista_id = get_current_nutricionista_id()
   );
 
--- Los pacientes pueden crearse a sí mismos (primer login)
--- Esto permite que un paciente que se autentica por primera vez cree su registro
-CREATE POLICY "pacientes_insert_self"
-  ON pacientes FOR INSERT
-  WITH CHECK (
-    -- Permitir si el auth_uid que se inserta coincide con el usuario autenticado
-    auth_uid = auth.uid()::uuid
-    AND
-    -- Y si no es un nutricionista (para evitar conflictos)
-    get_current_nutricionista_id() IS NULL
-  );
+-- Esta política ha sido eliminada porque los pacientes se crean automáticamente
+-- cuando el nutricionista crea la cuenta, no en el primer login
 
 -- Los nutricionistas pueden actualizar sus pacientes
 CREATE POLICY "pacientes_update_by_nutricionista"
