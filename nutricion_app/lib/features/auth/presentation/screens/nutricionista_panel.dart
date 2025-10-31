@@ -7,6 +7,7 @@ import '../../../pacientes/presentation/screens/crear_paciente_screen.dart';
 import '../../../pacientes/domain/usecases/obtener_pacientes_usecase.dart';
 import '../../../pacientes/data/repositories/pacientes_repository_impl.dart';
 import '../../../pacientes/domain/repositories/pacientes_repository.dart';
+import '../../../pacientes/domain/entities/paciente.dart';
 import 'role_selection_screen.dart';
 
 class NutricionistaPanel extends StatefulWidget {
