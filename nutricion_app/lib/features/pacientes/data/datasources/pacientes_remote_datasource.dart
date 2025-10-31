@@ -152,85 +152,31 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
       }
 
       // Buscar el nutricionista por auth_uid
-      var nutriResponse = await supabase
+      final nutriResponse = await supabase
           .from('nutricionistas')
           .select('id, auth_uid, email')
           .eq('auth_uid', user.id);
 
-      String nutricionistaId;
-      Map<String, dynamic> nutriData;
-
       if (nutriResponse == null || nutriResponse.isEmpty) {
-        // 🔄 Auto-corrección: Intentar asociar automáticamente el auth_uid al nutricionista existente
+        // 🔍 DEBUG: Mostrar información adicional si no se encuentra
         if (kDebugMode) {
-          print('⚠️ Nutricionista no encontrado con auth_uid: ${user.id}');
-          print('🔄 Intentando actualizar auth_uid automáticamente...');
+          print('❌ ERROR: Nutricionista no encontrado con auth_uid: ${user.id}');
+          print('💡 Verifica que el auth_uid en la tabla nutricionistas coincida con este UUID');
+          print('💡 Ejecuta en Supabase SQL Editor:');
+          print('   SELECT id, auth_uid, email FROM nutricionistas;');
+          print('   UPDATE nutricionistas SET auth_uid = \'${user.id}\' WHERE email = \'TU_EMAIL_AQUI\';');
         }
+        throw PacientesException(
+          'Nutricionista no encontrado. Verifica que el auth_uid en la tabla nutricionistas coincida con tu usuario autenticado.'
+        );
+      }
 
-        // Buscar el primer nutricionista disponible
-        final possibleNutri = await supabase
-            .from('nutricionistas')
-            .select('id, email, nombre')
-            .limit(1);
-
-        if (possibleNutri != null && possibleNutri.isNotEmpty) {
-          final nutriToUpdate = possibleNutri.first as Map<String, dynamic>;
-          final nutriId = nutriToUpdate['id'] as String;
-          final email = nutriToUpdate['email'] as String? ?? 'sin email';
-
-          try {
-            // Actualizar el auth_uid en la base de datos
-            await supabase
-                .from('nutricionistas')
-                .update({'auth_uid': user.id})
-                .eq('id', nutriId);
-
-            if (kDebugMode) {
-              print('✅ auth_uid actualizado automáticamente para nutricionista: $email (id: $nutriId)');
-            }
-
-            // Reintentar obtener el nutricionista ya actualizado
-            final newNutri = await supabase
-                .from('nutricionistas')
-                .select('id, auth_uid, email')
-                .eq('auth_uid', user.id);
-
-            if (newNutri != null && newNutri.isNotEmpty) {
-              nutriData = newNutri.first as Map<String, dynamic>;
-              nutricionistaId = nutriData['id'] as String;
-              
-              if (kDebugMode) {
-                print('✅ Nutricionista encontrado después de actualización: id=$nutricionistaId, email=${nutriData['email']}');
-              }
-            } else {
-              throw PacientesException(
-                'No se pudo vincular el nutricionista automáticamente. Intenta más tarde.'
-              );
-            }
-          } on PostgrestException catch (e) {
-            if (kDebugMode) {
-              print('❌ Error al actualizar auth_uid: ${e.message}');
-            }
-            throw PacientesException(
-              'Error al vincular nutricionista: ${e.message}'
-            );
-          }
-        } else {
-          if (kDebugMode) {
-            print('❌ ERROR: No hay nutricionistas en la base de datos');
-          }
-          throw PacientesException(
-            'No hay nutricionistas disponibles. Contacta al administrador.'
-          );
-        }
-      } else {
-        // Nutricionista encontrado normalmente
-        nutriData = nutriResponse.first as Map<String, dynamic>;
-        nutricionistaId = nutriData['id'] as String;
-        
-        if (kDebugMode) {
-          print('✅ Nutricionista encontrado: id=$nutricionistaId, email=${nutriData['email']}');
-        }
+      final nutriData = nutriResponse.first as Map<String, dynamic>;
+      final nutricionistaId = nutriData['id'] as String;
+      
+      // 🔍 DEBUG: Confirmar que se encontró el nutricionista
+      if (kDebugMode) {
+        print('✅ Nutricionista encontrado: id=${nutriData['id']}, email=${nutriData['email']}');
       }
 
       // Paso 1: Crear cuenta en Supabase Auth
