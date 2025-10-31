@@ -33,6 +33,7 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
     required String nombre,
     required String apellidos,
     String? dni,
+    String? password, // No se usa al editar, pero necesario para la firma
     String? sexo,
     int? edad,
     double? peso,

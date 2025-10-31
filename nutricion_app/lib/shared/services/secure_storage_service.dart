@@ -12,9 +12,6 @@ class SecureStorageService {
     aOptions: AndroidOptions(
       encryptedSharedPreferences: true,
     ),
-    iOptions: IOSOptions(
-      accessibility: IOSAccessibility.first_unlock_this_device,
-    ),
   );
   
   /// Guardar un valor de forma segura
