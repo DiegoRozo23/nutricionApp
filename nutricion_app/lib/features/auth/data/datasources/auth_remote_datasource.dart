@@ -70,11 +70,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final authUid = response.user!.id;
 
       // Buscar el nutricionista en la tabla por auth_uid
-      final nutriData = await supabase
+      final nutriResponse = await supabase
           .from('nutricionistas')
           .select()
-          .eq('auth_uid', authUid)
-          .single();
+          .eq('auth_uid', authUid);
+
+      if (nutriResponse == null || nutriResponse.isEmpty) {
+        throw AppAuthException('Usuario no encontrado en la base de datos');
+      }
+
+      final nutriData = nutriResponse.first as Map<String, dynamic>;
 
       // Verificar si está activo
       if (nutriData['activo'] == false) {
@@ -271,12 +276,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final user = supabase.auth.currentUser;
       if (user == null) return null;
 
-      final nutriData = await supabase
+      final nutriResponse = await supabase
           .from('nutricionistas')
           .select()
-          .eq('auth_uid', user.id)
-          .single();
+          .eq('auth_uid', user.id);
 
+      if (nutriResponse == null || nutriResponse.isEmpty) {
+        return null;
+      }
+
+      final nutriData = nutriResponse.first as Map<String, dynamic>;
       return NutricionistaModel.fromSupabaseRow(nutriData);
     } catch (e) {
       if (kDebugMode) {
