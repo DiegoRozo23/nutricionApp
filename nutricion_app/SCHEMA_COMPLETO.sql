@@ -215,24 +215,8 @@ ALTER TABLE chats.user_status ENABLE ROW LEVEL SECURITY;
 -- ============================================
 -- FUNCIONES AUXILIARES RLS
 -- ============================================
-
-CREATE OR REPLACE FUNCTION get_nutricionista_id_from_auth()
-RETURNS UUID AS $$
-  SELECT id FROM nutricionistas WHERE auth_uid = auth.uid()::uuid LIMIT 1;
-$$ LANGUAGE sql STABLE SECURITY DEFINER;
-
-CREATE OR REPLACE FUNCTION get_current_nutricionista_id()
-RETURNS UUID AS $$
-BEGIN
-  RETURN (
-    SELECT id 
-    FROM nutricionistas 
-    WHERE auth_uid = auth.uid()::uuid 
-      AND activo = TRUE
-    LIMIT 1
-  );
-END;
-$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+-- NOTA: Eliminamos las funciones auxiliares que causaban recursión infinita
+-- Las políticas ahora usan EXISTS directo en lugar de funciones intermedias
 
 -- ============================================
 -- FUNCIONES CREAR NUTRICIONISTAS
@@ -488,16 +472,28 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- POLÍTICAS RLS
 -- ============================================
 
-CREATE POLICY "Ver propios datos" ON nutricionistas
-FOR SELECT USING (auth.uid()::uuid = auth_uid);
-
-CREATE POLICY "Actualizar propios datos" ON nutricionistas
-FOR UPDATE USING (auth.uid()::uuid = auth_uid);
-
--- Permitir buscar nutricionista por username/email para login 
-CREATE POLICY "Buscar para login"
+-- Los nutricionistas solo ven sus propios datos
+CREATE POLICY "nutricionistas_select_own"
   ON nutricionistas FOR SELECT
-  USING (true);
+  USING (auth_uid = auth.uid()::uuid);
+
+-- Los nutricionistas pueden actualizar sus propios datos
+CREATE POLICY "nutricionistas_update_own"
+  ON nutricionistas FOR UPDATE
+  USING (auth_uid = auth.uid()::uuid)
+  WITH CHECK (auth_uid = auth.uid()::uuid);
+
+-- IMPORTANTE: Permitir búsqueda pública por username/email para login
+-- Esto es necesario ANTES de autenticar, cuando no hay auth.uid() todavía
+CREATE POLICY "nutricionistas_public_username_email"
+  ON nutricionistas FOR SELECT
+  USING (
+    -- Permite acceso si no hay usuario autenticado (login público)
+    auth.uid() IS NULL
+    OR
+    -- O si es el propio nutricionista autenticado
+    auth_uid = auth.uid()::uuid
+  );
 
 CREATE POLICY "Pacientes ven su nutricionista asignado"
   ON nutricionistas FOR SELECT
@@ -524,7 +520,12 @@ CREATE POLICY "Nutricionistas crean pacientes"
   ON pacientes FOR INSERT
   TO authenticated
   WITH CHECK (
-    nutricionista_id = get_current_nutricionista_id()
+    -- Verificar directamente que el nutricionista_id pertenece al usuario autenticado
+    EXISTS (
+      SELECT 1 FROM nutricionistas
+      WHERE nutricionistas.id = pacientes.nutricionista_id
+        AND nutricionistas.auth_uid = auth.uid()::uuid
+    )
   );
 
 CREATE POLICY "Nutricionistas actualizan sus pacientes"
