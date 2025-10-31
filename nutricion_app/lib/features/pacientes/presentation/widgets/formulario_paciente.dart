@@ -401,7 +401,6 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
                 hintText: widget.isEditing ? null : 'Obligatorio para crear cuenta',
               ),
               keyboardType: TextInputType.number,
-              enabled: !widget.isEditing, // No se puede editar DNI
             ),
             const SizedBox(height: 16),
 
