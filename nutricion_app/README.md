@@ -189,7 +189,6 @@ Response vuelve en el mismo orden
 ### Archivos de Configuración
 
 - **`SCHEMA_COMPLETO.sql`**: SQL consolidado para crear toda la base de datos
-- **`SCHEMA_RLS_SIMPLIFICADO.sql`**: Políticas RLS simplificadas y robustas
 - **`CREAR_NUTRICIONISTA.sql`**: Ejemplo de cómo crear un nutricionista
 
 ### Configuración Inicial
