@@ -1,7 +1,69 @@
 import 'package:flutter/material.dart';
+import '../../domain/usecases/logout_usecase.dart';
+import '../../data/repositories/auth_repository_impl.dart';
+import 'role_selection_screen.dart';
 
-class PacientePanel extends StatelessWidget {
+class PacientePanel extends StatefulWidget {
   const PacientePanel({super.key});
+
+  @override
+  State<PacientePanel> createState() => _PacientePanelState();
+}
+
+class _PacientePanelState extends State<PacientePanel> {
+  late final LogoutUseCase _logoutUseCase;
+
+  @override
+  void initState() {
+    super.initState();
+    _logoutUseCase = LogoutUseCase(AuthRepositoryImpl());
+  }
+
+  Future<void> _handleLogout() async {
+    // Mostrar diálogo de confirmación
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar Sesión'),
+        content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Cerrar Sesión'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !mounted) return;
+
+    try {
+      await _logoutUseCase();
+      
+      if (!mounted) return;
+      
+      // Navegar a la pantalla de selección de rol
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const RoleSelectionScreen(),
+        ),
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al cerrar sesión: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -11,6 +73,13 @@ class PacientePanel extends StatelessWidget {
         backgroundColor: const Color(0xFF2196F3),
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            onPressed: _handleLogout,
+            tooltip: 'Cerrar Sesión',
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(

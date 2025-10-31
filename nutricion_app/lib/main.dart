@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'features/auth/presentation/screens/role_selection_screen.dart';
+import 'features/auth/presentation/screens/splash_screen.dart';
 import 'config/app_theme.dart';
 import 'shared/services/storage_service.dart';
 import 'shared/services/supabase_service.dart';
@@ -23,7 +23,7 @@ class NutricionApp extends StatelessWidget {
       title: 'NutricionApp',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      home: const RoleSelectionScreen(),
+      home: const SplashScreen(),
     );
   }
 }

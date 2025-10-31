@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../../../shared/utils/constants.dart';
 import 'nutricionista_panel.dart';
 import 'paciente_panel.dart';
+import '../../domain/usecases/login_usecase.dart';
+import '../../data/repositories/auth_repository_impl.dart';
+import '../../domain/repositories/auth_repository.dart' as auth_domain;
 
 /// Pantalla de login con credenciales
 class CredencialesScreen extends StatefulWidget {
@@ -19,11 +22,23 @@ class CredencialesScreen extends StatefulWidget {
 class _CredencialesScreenState extends State<CredencialesScreen> {
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _isLoading = false;
   
   // Controladores para los campos de texto
   final TextEditingController _credentialController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+
+  // Instanciar repository y use case
+  late final auth_domain.AuthRepository _repository;
+  late final LoginUseCase _loginUseCase;
+
+  @override
+  void initState() {
+    super.initState();
+    _repository = AuthRepositoryImpl();
+    _loginUseCase = LoginUseCase(_repository);
+  }
 
   @override
   void dispose() {
@@ -32,53 +47,68 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     // Validar formulario
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    final credential = _credentialController.text.trim();
-    final password = _passwordController.text.trim();
+    if (_isLoading) return;
 
-    // Validación simple (luego se conectará con Supabase)
-    if (credential.isEmpty || password.isEmpty) {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final credential = _credentialController.text.trim();
+      final password = _passwordController.text.trim();
+
+      // Ejecutar login use case
+      final result = await _loginUseCase(
+        role: widget.role,
+        credential: credential,
+        password: password,
+      );
+
+      if (!mounted) return;
+
+      if (result is auth_domain.AuthSuccess) {
+        // Login exitoso
+        if (widget.role == 'nutricionista') {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const NutricionistaPanel()),
+            (route) => false,
+          );
+        } else if (widget.role == 'paciente') {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const PacientePanel()),
+            (route) => false,
+          );
+        }
+      } else if (result is auth_domain.AuthFailure) {
+        // Login fallido
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result.message),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor ingresa tus credenciales'),
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
           backgroundColor: Colors.red,
         ),
       );
-      return;
-    }
-
-    // Mostrar loading
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-
-    // Simular validación (luego será con Supabase)
-    Future.delayed(const Duration(seconds: 1), () {
-      if (!mounted) return;
-      Navigator.of(context).pop(); // Cerrar loading
-
-      // Navegar según el rol
-      if (widget.role == 'nutricionista') {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const NutricionistaPanel()),
-          (route) => false,
-        );
-      } else if (widget.role == 'paciente') {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const PacientePanel()),
-          (route) => false,
-        );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
-    });
+    }
   }
 
   String _getLabelText() {
@@ -228,20 +258,29 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: _handleLogin,
+                        onPressed: _isLoading ? null : _handleLogin,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: widget.role == 'nutricionista' 
                               ? const Color(0xFF4CAF50) 
                               : const Color(0xFF2196F3),
                           foregroundColor: Colors.white,
                         ),
-                        child: const Text(
-                          'Iniciar Sesión',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: _isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Iniciar Sesión',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
                   ],
