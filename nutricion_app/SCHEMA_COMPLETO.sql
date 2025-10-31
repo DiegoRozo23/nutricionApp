@@ -643,7 +643,7 @@ CREATE POLICY "Miembros envían mensajes"
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM chats.room_members
-      WHERE chats.room_members.room_id = NEW.room_id
+      WHERE chats.room_members.room_id = chats.messages.room_id
         AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
@@ -669,7 +669,7 @@ CREATE POLICY "Insertar typing status"
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM chats.room_members
-      WHERE chats.room_members.room_id = NEW.room_id
+      WHERE chats.room_members.room_id = chats.typing_status.room_id
         AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
