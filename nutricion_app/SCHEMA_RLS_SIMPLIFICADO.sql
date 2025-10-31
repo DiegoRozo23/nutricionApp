@@ -102,15 +102,15 @@ CREATE POLICY "pacientes_select_by_nutricionista"
   );
 
 -- Los nutricionistas pueden crear pacientes
--- IMPORTANTE: Esta política permite que el nutricionista_id sea el del nutricionista autenticado
+-- IMPORTANTE: Esta política verifica que el nutricionista_id sea del nutricionista autenticado
 CREATE POLICY "pacientes_insert_by_nutricionista"
   ON pacientes FOR INSERT
   WITH CHECK (
     -- Verificar que el nutricionista_id que se inserta pertenece al nutricionista autenticado
+    -- Si get_current_nutricionista_id() devuelve NULL, significa que el usuario no es nutricionista
+    get_current_nutricionista_id() IS NOT NULL
+    AND
     nutricionista_id = get_current_nutricionista_id()
-    OR
-    -- Permitir si el nutricionista_id es NULL (se llenará automáticamente)
-    nutricionista_id IS NULL
   );
 
 -- Los nutricionistas pueden actualizar sus pacientes
