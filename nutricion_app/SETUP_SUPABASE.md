@@ -275,293 +275,269 @@ ALTER TABLE chats.typing_status ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chats.user_status ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- POLÍTICAS PARA NUTRICIONISTAS
+-- POLÍTICAS RLS
 -- ============================================
 
--- Los nutricionistas pueden ver solo sus datos
-CREATE POLICY "Nutricionistas pueden ver sus datos"
-  ON nutricionistas FOR SELECT
-  USING (auth.uid() = auth_uid::text);
+-- 🔸 NUTRICIONISTAS
+CREATE POLICY "Ver propios datos"
+  ON nutricionistas
+  FOR SELECT
+  USING (auth.uid()::uuid = auth_uid);
 
--- Los nutricionistas pueden actualizar sus datos
-CREATE POLICY "Nutricionistas pueden actualizar sus datos"
-  ON nutricionistas FOR UPDATE
-  USING (auth.uid() = auth_uid::text);
+CREATE POLICY "Actualizar propios datos"
+  ON nutricionistas
+  FOR UPDATE
+  USING (auth.uid()::uuid = auth_uid);
 
--- ============================================
--- POLÍTICAS PARA PACIENTES (CRUD COMPLETO)
--- ============================================
-
--- Nutricionistas pueden ver SUS pacientes
-CREATE POLICY "Nutricionistas pueden ver sus pacientes"
-  ON pacientes FOR SELECT
+-- 🔸 PACIENTES
+CREATE POLICY "Nutricionistas ven sus pacientes"
+  ON pacientes
+  FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM nutricionistas
+      SELECT 1
+      FROM nutricionistas
       WHERE nutricionistas.id = pacientes.nutricionista_id
-      AND nutricionistas.auth_uid = auth.uid()::uuid
+        AND nutricionistas.auth_uid = auth.uid()::uuid
     )
   );
 
--- Nutricionistas pueden CREAR pacientes
-CREATE POLICY "Nutricionistas pueden crear pacientes"
-  ON pacientes FOR INSERT
+CREATE POLICY "Nutricionistas crean pacientes"
+  ON pacientes
+  FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM nutricionistas
+      SELECT 1
+      FROM nutricionistas
       WHERE nutricionistas.auth_uid = auth.uid()::uuid
-      AND nutricionistas.id = NEW.nutricionista_id
+        AND nutricionistas.id = pacientes.nutricionista_id
     )
   );
 
--- Nutricionistas pueden ACTUALIZAR SUS pacientes (CRUD)
-CREATE POLICY "Nutricionistas pueden actualizar sus pacientes"
-  ON pacientes FOR UPDATE
+CREATE POLICY "Nutricionistas actualizan sus pacientes"
+  ON pacientes
+  FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM nutricionistas
+      SELECT 1
+      FROM nutricionistas
       WHERE nutricionistas.id = pacientes.nutricionista_id
-      AND nutricionistas.auth_uid = auth.uid()::uuid
+        AND nutricionistas.auth_uid = auth.uid()::uuid
     )
   );
 
--- Nutricionistas pueden ELIMINAR SUS pacientes (CRUD)
-CREATE POLICY "Nutricionistas pueden eliminar sus pacientes"
-  ON pacientes FOR DELETE
+CREATE POLICY "Nutricionistas eliminan sus pacientes"
+  ON pacientes
+  FOR DELETE
   USING (
     EXISTS (
-      SELECT 1 FROM nutricionistas
+      SELECT 1
+      FROM nutricionistas
       WHERE nutricionistas.id = pacientes.nutricionista_id
-      AND nutricionistas.auth_uid = auth.uid()::uuid
+        AND nutricionistas.auth_uid = auth.uid()::uuid
     )
   );
 
--- Pacientes pueden ver SUS datos
-CREATE POLICY "Pacientes pueden ver sus datos"
-  ON pacientes FOR SELECT
-  USING (auth.uid() = auth_uid::text);
+CREATE POLICY "Pacientes ven sus datos"
+  ON pacientes
+  FOR SELECT
+  USING (auth.uid()::uuid = auth_uid);
 
--- Los pacientes NO pueden modificar sus datos (según requerimientos)
--- No hay política de UPDATE para pacientes
-
--- ============================================
--- POLÍTICAS PARA PLANES NUTRICIONALES
--- ============================================
-
--- Nutricionistas pueden ver planes de sus pacientes
-CREATE POLICY "Nutricionistas pueden ver planes de sus pacientes"
-  ON planes_nutricionales FOR SELECT
+-- 🔸 PLANES NUTRICIONALES
+CREATE POLICY "Nutricionistas gestionan planes"
+  ON planes_nutricionales
+  FOR ALL
   USING (
     EXISTS (
-      SELECT 1 FROM pacientes
-      JOIN nutricionistas ON pacientes.nutricionista_id = nutricionistas.id
+      SELECT 1
+      FROM pacientes
+      JOIN nutricionistas
+        ON pacientes.nutricionista_id = nutricionistas.id
       WHERE pacientes.id = planes_nutricionales.paciente_id
-      AND nutricionistas.auth_uid = auth.uid()::uuid
+        AND nutricionistas.auth_uid = auth.uid()::uuid
     )
-  );
-
--- Nutricionistas pueden crear planes
-CREATE POLICY "Nutricionistas pueden crear planes"
-  ON planes_nutricionales FOR INSERT
+  )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM pacientes
-      JOIN nutricionistas ON pacientes.nutricionista_id = nutricionistas.id
-      WHERE pacientes.id = NEW.paciente_id
-      AND nutricionistas.auth_uid = auth.uid()::uuid
+      SELECT 1
+      FROM pacientes
+      JOIN nutricionistas
+        ON pacientes.nutricionista_id = nutricionistas.id
+      WHERE pacientes.id = planes_nutricionales.paciente_id
+        AND nutricionistas.auth_uid = auth.uid()::uuid
     )
   );
 
--- Nutricionistas pueden actualizar planes
-CREATE POLICY "Nutricionistas pueden actualizar planes"
-  ON planes_nutricionales FOR UPDATE
+CREATE POLICY "Pacientes ven sus planes"
+  ON planes_nutricionales
+  FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM pacientes
-      JOIN nutricionistas ON pacientes.nutricionista_id = nutricionistas.id
+      SELECT 1
+      FROM pacientes
       WHERE pacientes.id = planes_nutricionales.paciente_id
-      AND nutricionistas.auth_uid = auth.uid()::uuid
-    )
-  );
-
--- Nutricionistas pueden eliminar planes
-CREATE POLICY "Nutricionistas pueden eliminar planes"
-  ON planes_nutricionales FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM pacientes
-      JOIN nutricionistas ON pacientes.nutricionista_id = nutricionistas.id
-      WHERE pacientes.id = planes_nutricionales.paciente_id
-      AND nutricionistas.auth_uid = auth.uid()::uuid
-    )
-  );
-
--- Pacientes pueden ver SUS planes
-CREATE POLICY "Pacientes pueden ver sus planes"
-  ON planes_nutricionales FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM pacientes
-      WHERE pacientes.id = planes_nutricionales.paciente_id
-      AND pacientes.auth_uid = auth.uid()::uuid
+        AND pacientes.auth_uid = auth.uid()::uuid
     )
   );
 
 -- ============================================
--- POLÍTICAS PARA CHATS.USERS
+-- 🔸 CHATS (flutter_supabase_chat_core)
 -- ============================================
 
--- INSERT: Se hace automáticamente por trigger
+-- 🔸 chats.users
 CREATE POLICY "Usuarios pueden ver todos los perfiles"
-  ON chats.users FOR SELECT
+  ON chats.users
+  FOR SELECT
   USING (true);
 
--- UPDATE: Solo el mismo usuario
-CREATE POLICY "Usuarios pueden actualizar su perfil"
-  ON chats.users FOR UPDATE
-  USING (auth.uid() = id);
+CREATE POLICY "Actualizar propio perfil"
+  ON chats.users
+  FOR UPDATE
+  USING (auth.uid()::uuid = id);
 
--- ============================================
--- POLÍTICAS PARA CHATS.ROOMS
--- ============================================
-
--- INSERT: Todos los usuarios autenticados
-CREATE POLICY "Usuarios pueden crear salas"
-  ON chats.rooms FOR INSERT
+-- 🔸 chats.rooms
+CREATE POLICY "Usuarios crean salas"
+  ON chats.rooms
+  FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL);
 
--- SELECT: Solo miembros de la sala
-CREATE POLICY "Miembros pueden ver sus salas"
-  ON chats.rooms FOR SELECT
+CREATE POLICY "Miembros ven sus salas"
+  ON chats.rooms
+  FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM chats.room_members
+      SELECT 1
+      FROM chats.room_members
       WHERE chats.room_members.room_id = chats.rooms.id
-      AND chats.room_members.user_id = auth.uid()::uuid
+        AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
--- UPDATE: Solo miembros de la sala
-CREATE POLICY "Miembros pueden actualizar salas"
-  ON chats.rooms FOR UPDATE
+CREATE POLICY "Miembros actualizan salas"
+  ON chats.rooms
+  FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM chats.room_members
+      SELECT 1
+      FROM chats.room_members
       WHERE chats.room_members.room_id = chats.rooms.id
-      AND chats.room_members.user_id = auth.uid()::uuid
+        AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
--- DELETE: Solo miembros de la sala
-CREATE POLICY "Miembros pueden eliminar salas"
-  ON chats.rooms FOR DELETE
+CREATE POLICY "Miembros eliminan salas"
+  ON chats.rooms
+  FOR DELETE
   USING (
     EXISTS (
-      SELECT 1 FROM chats.room_members
+      SELECT 1
+      FROM chats.room_members
       WHERE chats.room_members.room_id = chats.rooms.id
-      AND chats.room_members.user_id = auth.uid()::uuid
+        AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
--- ============================================
--- POLÍTICAS PARA CHATS.ROOM_MEMBERS
--- ============================================
-
--- INSERT: Autenticados para salas donde son miembros o para crear nuevas membresías
-CREATE POLICY "Usuarios pueden agregar miembros"
-  ON chats.room_members FOR INSERT
+-- 🔸 chats.room_members
+CREATE POLICY "Insertar membresías"
+  ON chats.room_members
+  FOR INSERT
   WITH CHECK (auth.uid() IS NOT NULL);
 
--- SELECT: Ver tus propias membresías
 CREATE POLICY "Ver tus membresías"
-  ON chats.room_members FOR SELECT
+  ON chats.room_members
+  FOR SELECT
   USING (user_id = auth.uid()::uuid);
 
--- UPDATE: Solo tu propia membresía
 CREATE POLICY "Actualizar tu membresía"
-  ON chats.room_members FOR UPDATE
+  ON chats.room_members
+  FOR UPDATE
   USING (user_id = auth.uid()::uuid);
 
--- DELETE: Cualquier miembro puede eliminar
-CREATE POLICY "Eliminar membresías"
-  ON chats.room_members FOR DELETE
-  USING (auth.uid() IS NOT NULL);
+CREATE POLICY "Eliminar membresías seguras"
+  ON chats.room_members
+  FOR DELETE
+  USING (
+    (SELECT role
+     FROM chats.room_members
+     WHERE room_id = chats.room_members.room_id
+       AND user_id = auth.uid()::uuid) IN ('owner', 'admin')
+    OR chats.room_members.user_id = auth.uid()::uuid
+  );
 
--- ============================================
--- POLÍTICAS PARA CHATS.MESSAGES
--- ============================================
-
--- INSERT: Solo si eres miembro del room
-CREATE POLICY "Miembros pueden enviar mensajes"
-  ON chats.messages FOR INSERT
+-- 🔸 chats.messages
+CREATE POLICY "Miembros envían mensajes"
+  ON chats.messages
+  FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM chats.room_members
+      SELECT 1
+      FROM chats.room_members
       WHERE chats.room_members.room_id = NEW.room_id
-      AND chats.room_members.user_id = auth.uid()::uuid
+        AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
--- SELECT: Solo si eres miembro del room
-CREATE POLICY "Miembros pueden ver mensajes"
-  ON chats.messages FOR SELECT
+CREATE POLICY "Miembros ven mensajes"
+  ON chats.messages
+  FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM chats.room_members
+      SELECT 1
+      FROM chats.room_members
       WHERE chats.room_members.room_id = chats.messages.room_id
-      AND chats.room_members.user_id = auth.uid()::uuid
+        AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
--- UPDATE: Solo tus propios mensajes
 CREATE POLICY "Actualizar tus mensajes"
-  ON chats.messages FOR UPDATE
+  ON chats.messages
+  FOR UPDATE
   USING (user_id = auth.uid()::uuid);
 
--- DELETE: Solo tus propios mensajes
 CREATE POLICY "Eliminar tus mensajes"
-  ON chats.messages FOR DELETE
+  ON chats.messages
+  FOR DELETE
   USING (user_id = auth.uid()::uuid);
 
--- ============================================
--- POLÍTICAS PARA CHATS.TYPING_STATUS
--- ============================================
-
--- Solo miembro del room
+-- 🔸 chats.typing_status
 CREATE POLICY "Insertar typing status"
-  ON chats.typing_status FOR INSERT
+  ON chats.typing_status
+  FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM chats.room_members
+      SELECT 1
+      FROM chats.room_members
       WHERE chats.room_members.room_id = NEW.room_id
-      AND chats.room_members.user_id = auth.uid()::uuid
+        AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
 CREATE POLICY "Ver typing status"
-  ON chats.typing_status FOR SELECT
+  ON chats.typing_status
+  FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM chats.room_members
+      SELECT 1
+      FROM chats.room_members
       WHERE chats.room_members.room_id = chats.typing_status.room_id
-      AND chats.room_members.user_id = auth.uid()::uuid
+        AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
 CREATE POLICY "Actualizar typing status"
-  ON chats.typing_status FOR UPDATE
+  ON chats.typing_status
+  FOR UPDATE
   USING (user_id = auth.uid()::uuid);
 
--- ============================================
--- POLÍTICAS PARA CHATS.USER_STATUS
--- ============================================
-
+-- 🔸 chats.user_status
 CREATE POLICY "Ver estado de usuarios"
-  ON chats.user_status FOR SELECT
+  ON chats.user_status
+  FOR SELECT
   USING (true);
 
 CREATE POLICY "Actualizar tu estado"
-  ON chats.user_status FOR UPDATE
+  ON chats.user_status
+  FOR UPDATE
   USING (user_id = auth.uid()::uuid);
 ```
 
