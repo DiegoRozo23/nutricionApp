@@ -141,9 +141,9 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
     // Obtener el padding inferior del viewport (teclado/navegación)
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
     final safeAreaBottom = MediaQuery.of(context).padding.bottom;
-    final extraBottomPadding = bottomPadding > 0 
+    final extraBottomPadding = (bottomPadding > 0 
         ? bottomPadding 
-        : (safeAreaBottom > 0 ? safeAreaBottom + 24 : 32);
+        : (safeAreaBottom > 0 ? safeAreaBottom + 24.0 : 32.0)).toDouble();
 
     return Form(
       key: _formKey,
