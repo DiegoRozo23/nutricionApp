@@ -240,10 +240,7 @@ CREATE POLICY "Nutricionistas ven sus pacientes"
 CREATE POLICY "Nutricionistas crean pacientes"
   ON pacientes FOR INSERT
   WITH CHECK (
-    nutricionista_id IN (
-      SELECT id FROM nutricionistas
-      WHERE auth_uid = auth.uid()::uuid
-    )
+    nutricionista_id = get_nutricionista_id_from_auth()
   );
 
 CREATE POLICY "Nutricionistas actualizan sus pacientes"
