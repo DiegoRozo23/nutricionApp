@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import '../../domain/usecases/logout_usecase.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../../../shared/services/storage_service.dart';
+import '../../../pacientes/presentation/screens/lista_pacientes_screen.dart';
+import '../../../pacientes/presentation/screens/crear_paciente_screen.dart';
+import '../../../pacientes/domain/usecases/obtener_pacientes_usecase.dart';
+import '../../../pacientes/data/repositories/pacientes_repository_impl.dart';
+import '../../../pacientes/domain/repositories/pacientes_repository.dart';
 import 'role_selection_screen.dart';
 
 class NutricionistaPanel extends StatefulWidget {
@@ -13,11 +18,33 @@ class NutricionistaPanel extends StatefulWidget {
 
 class _NutricionistaPanelState extends State<NutricionistaPanel> {
   late final LogoutUseCase _logoutUseCase;
+  final PacientesRepository _pacientesRepository = PacientesRepositoryImpl();
+  int _totalPacientes = 0;
+  bool _isLoadingPacientes = true;
 
   @override
   void initState() {
     super.initState();
     _logoutUseCase = LogoutUseCase(AuthRepositoryImpl());
+    _cargarEstadisticas();
+  }
+
+  Future<void> _cargarEstadisticas() async {
+    final useCase = ObtenerPacientesUseCase(_pacientesRepository);
+    final result = await useCase();
+
+    if (!mounted) return;
+
+    if (result is PacientesSuccess<List<Paciente>>) {
+      setState(() {
+        _totalPacientes = result.data.length;
+        _isLoadingPacientes = false;
+      });
+    } else {
+      setState(() {
+        _isLoadingPacientes = false;
+      });
+    }
   }
 
   Future<void> _handleLogout() async {
@@ -129,7 +156,7 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                     Expanded(
                       child: _StatCard(
                         title: 'Pacientes',
-                        value: '0',
+                        value: _isLoadingPacientes ? '-' : '$_totalPacientes',
                         icon: Icons.people_outline,
                         color: const Color(0xFF2196F3),
                       ),
@@ -163,9 +190,14 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                   icon: Icons.person_add,
                   color: const Color(0xFF4CAF50),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Crear paciente (Próximamente)')),
-                    );
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const CrearPacienteScreen(),
+                      ),
+                    ).then((_) {
+                      // Recargar estadísticas cuando vuelva
+                      _cargarEstadisticas();
+                    });
                   },
                 ),
                 const SizedBox(height: 12),
@@ -175,9 +207,14 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                   icon: Icons.list,
                   color: const Color(0xFF2196F3),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Ver pacientes (Próximamente)')),
-                    );
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ListaPacientesScreen(),
+                      ),
+                    ).then((_) {
+                      // Recargar estadísticas cuando vuelva
+                      _cargarEstadisticas();
+                    });
                   },
                 ),
                 const SizedBox(height: 12),
