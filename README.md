@@ -70,44 +70,44 @@ flutter run
 
 ## 📁 Estructura del Proyecto
 
-### Arquitectura: Clean Architecture Feature-Based
+El proyecto sigue **Clean Architecture** con organización **Feature-Based**:
 
 ```
-nutricion_app/lib/
-├── main.dart                    # Punto de entrada
-├── config/                      # Configuración global
-│   ├── app_theme.dart          # Temas y estilos
-│   └── app_routes.dart         # Rutas de navegación
-│
-├── features/                    # Módulos funcionales
-│   ├── auth/                   # 🔐 Autenticación
-│   │   ├── presentation/       # 👁️ Capa de Presentación
-│   │   │   ├── screens/       # Pantallas (Login, Panels)
-│   │   │   └── widgets/       # Widgets específicos
-│   │   ├── domain/            # 🧠 Lógica de Negocio
-│   │   │   ├── entities/      # Entidades puras
-│   │   │   ├── repositories/  # Interfaces
-│   │   │   └── usecases/      # Casos de uso
-│   │   └── data/              # 💾 Fuentes de Datos
-│   │       ├── models/        # Modelos de datos
-│   │       ├── repositories/  # Implementaciones
-│   │       └── datasources/   # Supabase
+nutricion_app/
+├── lib/
+│   ├── main.dart                 # Punto de entrada
 │   │
-│   ├── pacientes/             # 👥 Gestión de Pacientes
-│   │   ├── presentation/
-│   │   ├── domain/
-│   │   └── data/
+│   ├── config/                   # Configuración global
+│   │   ├── app_theme.dart
+│   │   └── app_routes.dart
 │   │
-│   └── chat/                  # 💬 Chat (Pendiente)
-│       └── presentation/
+│   ├── features/                 # Módulos funcionales
+│   │   ├── auth/                 # 🔐 Autenticación (100%)
+│   │   │   ├── presentation/     # Pantallas y widgets
+│   │   │   ├── domain/          # Entidades y casos de uso
+│   │   │   └── data/            # Datasources y repositorios
+│   │   │
+│   │   ├── pacientes/           # 👥 Gestión de Pacientes (85%)
+│   │   │   ├── presentation/
+│   │   │   ├── domain/
+│   │   │   └── data/
+│   │   │
+│   │   ├── chat/                # 💬 Chat (10%)
+│   │   │   └── presentation/
+│   │   │
+│   │   └── planes/              # 📋 Planes (vacío, no implementado)
+│   │
+│   └── shared/                  # Código compartido
+│       ├── services/            # Supabase, Storage, SecureStorage
+│       ├── widgets/             # Widgets reutilizables
+│       └── utils/               # Constantes y helpers
 │
-└── shared/                     # 🎯 Código compartido
-    ├── widgets/               # Widgets reutilizables
-    ├── services/              # Servicios globales
-    │   ├── supabase_service.dart
-    │   ├── storage_service.dart
-    │   └── secure_storage_service.dart
-    └── utils/                 # Utilidades
+├── SCHEMA_COMPLETO.sql         # Esquema de BD completo
+├── SCHEMA_RLS_SIMPLIFICADO.sql # Políticas RLS alternativas
+├── CREAR_NUTRICIONISTA.sql     # Ejemplo de creación de usuarios
+├── requerimientos.md           # Documentación de requerimientos
+├── pubspec.yaml
+└── README.md                    # Este archivo
 ```
 
 ## 🔒 Autenticación
