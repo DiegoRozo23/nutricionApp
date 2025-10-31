@@ -195,11 +195,9 @@ Response vuelve en el mismo orden
 
 1. Configura tu proyecto en [Supabase](https://supabase.com)
 2. Ejecuta el SQL de `SCHEMA_COMPLETO.sql` en el SQL Editor de Supabase
-3. Opcional: Ejecuta `SCHEMA_RLS_SIMPLIFICADO.sql` para usar políticas RLS más robustas
-4. Crea un nutricionista usando `CREAR_NUTRICIONISTA.sql` como ejemplo
-
-5. Ejecuta `flutter pub get` para instalar dependencias
-6. Ejecuta `flutter run` para iniciar la app
+3. Crea un nutricionista usando `CREAR_NUTRICIONISTA.sql` como ejemplo
+4. Ejecuta `flutter pub get` para instalar dependencias
+5. Ejecuta `flutter run` para iniciar la app
 
 ## 🔧 Tecnologías
 
