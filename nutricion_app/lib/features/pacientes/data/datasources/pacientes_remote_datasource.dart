@@ -174,6 +174,7 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
 
       // Retornar un PacienteModel básico con solo DNI y auth_uid
       // El paciente completará el resto después de iniciar sesión
+      final now = DateTime.now();
       return PacienteModel(
         id: '', // Se creará cuando complete su perfil
         authUid: authUid,
@@ -190,6 +191,8 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         historialMedico: null,
         observaciones: null,
         activo: true,
+        createdAt: now,
+        updatedAt: now,
       );
     } on PostgrestException catch (e) {
       if (kDebugMode) {
