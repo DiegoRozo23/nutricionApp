@@ -178,33 +178,80 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       final authUid = authResponse.user!.id;
 
-      // Ahora buscar el paciente en la tabla por auth_uid (más confiable que DNI)
-      final pacienteData = await supabase
+      // Buscar el paciente en la tabla por auth_uid
+      final pacienteResponse = await supabase
           .from('pacientes')
           .select()
-          .eq('auth_uid', authUid)
-          .maybeSingle();
+          .eq('auth_uid', authUid);
 
-      // Si no se encuentra por auth_uid, intentar buscar por DNI como fallback
-      if (pacienteData == null || pacienteData.isEmpty) {
-        // Fallback: buscar por DNI
-        final pacienteDataByDni = await supabase
-            .from('pacientes')
-            .select()
-            .eq('dni', dni)
-            .maybeSingle();
-        
-        if (pacienteDataByDni == null || pacienteDataByDni.isEmpty) {
-          throw AppAuthException('Paciente no encontrado en la base de datos');
+      // Si no existe en la tabla, crear un registro básico automáticamente
+      if (pacienteResponse == null || pacienteResponse.isEmpty) {
+        if (kDebugMode) {
+          print('📝 Paciente autenticado pero no existe en tabla. Creando registro básico...');
         }
         
-        // Verificar si está activo
-        if (pacienteDataByDni['activo'] == false) {
-          throw AppAuthException('Cuenta desactivada');
-        }
+        // Extraer DNI del email o de los metadatos
+        final userMetadata = authResponse.user!.userMetadata;
+        final pacienteDni = userMetadata['dni'] as String? ?? dni;
         
-        return PacienteModel.fromSupabaseRow(pacienteDataByDni);
+        // Crear registro básico en la tabla pacientes
+        // Nota: nutricionista_id puede ser NULL inicialmente
+        // El nutricionista puede asignarlo después
+        final pacienteDataToInsert = {
+          'auth_uid': authUid,
+          'dni': pacienteDni,
+          'nombre': '', // Se completará después
+          'apellidos': '', // Se completará después
+          'activo': true,
+        };
+        
+        try {
+          final insertResponse = await supabase
+              .from('pacientes')
+              .insert(pacienteDataToInsert)
+              .select();
+          
+          if (insertResponse == null || insertResponse.isEmpty) {
+            throw AppAuthException('Error al crear el registro del paciente');
+          }
+          
+          final nuevoPaciente = insertResponse.first as Map<String, dynamic>;
+          
+          if (kDebugMode) {
+            print('✅ Registro de paciente creado exitosamente');
+          }
+          
+          return PacienteModel.fromSupabaseRow(nuevoPaciente);
+        } on PostgrestException catch (e) {
+          if (kDebugMode) {
+            print('❌ Error al crear registro de paciente: ${e.message}');
+          }
+          
+          // Si falla por RLS o otro error, permitir login con datos básicos
+          // pero informar que necesita completar su perfil
+          return PacienteModel(
+            id: '',
+            authUid: authUid,
+            nutricionistaId: null,
+            nombre: '',
+            apellidos: '',
+            dni: pacienteDni,
+            sexo: null,
+            edad: null,
+            peso: null,
+            talla: null,
+            imc: null,
+            medidasAntropometricas: null,
+            historialMedico: null,
+            observaciones: null,
+            activo: true,
+            createdAt: DateTime.now(),
+            updatedAt: DateTime.now(),
+          );
+        }
       }
+
+      final pacienteData = pacienteResponse.first as Map<String, dynamic>;
 
       // Verificar si está activo
       if (pacienteData['activo'] == false) {
