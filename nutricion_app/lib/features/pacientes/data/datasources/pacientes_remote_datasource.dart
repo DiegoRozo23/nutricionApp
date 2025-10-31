@@ -148,9 +148,10 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
       final nutricionistaId = nutriData['id'] as String;
 
       // Paso 1: Crear cuenta en Supabase Auth
-      // Usamos el DNI como email (formato: dni@nutricionapp.local)
+      // Usamos el DNI como email (formato: paciente_DNI@nutricionapp.com)
       // Esto permite que el paciente inicie sesión con DNI y contraseña
-      final email = '${paciente.dni}@nutricionapp.local';
+      // Nota: Supabase requiere un email válido, así que usamos un dominio válido
+      final email = 'paciente_${paciente.dni}@nutricionapp.com';
       
       final authResponse = await supabase.auth.signUp(
         email: email,

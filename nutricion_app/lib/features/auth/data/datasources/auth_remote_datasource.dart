@@ -149,8 +149,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final authUid = pacienteData['auth_uid'];
       if (authUid != null) {
         try {
-          // Usamos el formato de email: dni@nutricionapp.local
-          final email = '$dni@nutricionapp.local';
+          // Usamos el formato de email: paciente_DNI@nutricionapp.com
+          final email = 'paciente_$dni@nutricionapp.com';
           await supabase.auth.signInWithPassword(
             email: email,
             password: password,
