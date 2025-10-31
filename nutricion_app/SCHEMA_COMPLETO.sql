@@ -219,6 +219,21 @@ ALTER TABLE chats.messages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chats.typing_status ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chats.user_status ENABLE ROW LEVEL SECURITY;
 
+-- ============================================
+-- FUNCIONES AUXILIARES PARA RLS
+-- ============================================
+
+-- Función auxiliar para obtener el ID del nutricionista autenticado
+-- Facilita las políticas RLS y hace el código más mantenible
+CREATE OR REPLACE FUNCTION get_nutricionista_id_from_auth()
+RETURNS UUID AS $$
+  SELECT id FROM nutricionistas WHERE auth_uid = auth.uid()::uuid LIMIT 1;
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+
+-- ============================================
+-- POLÍTICAS RLS
+-- ============================================
+
 -- === NUTRICIONISTAS ===
 CREATE POLICY "Ver propios datos" ON nutricionistas
 FOR SELECT USING (auth.uid()::uuid = auth_uid);
