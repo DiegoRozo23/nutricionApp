@@ -191,7 +191,6 @@ Response vuelve en el mismo orden
 - **`SCHEMA_COMPLETO.sql`**: SQL consolidado para crear toda la base de datos
 - **`SCHEMA_RLS_SIMPLIFICADO.sql`**: Políticas RLS simplificadas y robustas
 - **`CREAR_NUTRICIONISTA.sql`**: Ejemplo de cómo crear un nutricionista
-- **`env.example`**: Ejemplo de archivo .env (crea tu propio .env con tus credenciales)
 
 ### Configuración Inicial
 
@@ -199,9 +198,9 @@ Response vuelve en el mismo orden
 2. Ejecuta el SQL de `SCHEMA_COMPLETO.sql` en el SQL Editor de Supabase
 3. Opcional: Ejecuta `SCHEMA_RLS_SIMPLIFICADO.sql` para usar políticas RLS más robustas
 4. Crea un nutricionista usando `CREAR_NUTRICIONISTA.sql` como ejemplo
-5. Copia `env.example` a `.env` y agrega tus credenciales de Supabase
-6. Ejecuta `flutter pub get` para instalar dependencias
-7. Ejecuta `flutter run` para iniciar la app
+
+5. Ejecuta `flutter pub get` para instalar dependencias
+6. Ejecuta `flutter run` para iniciar la app
 
 ## 🔧 Tecnologías
 
