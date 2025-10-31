@@ -133,37 +133,72 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String password,
   }) async {
     try {
-      // Para pacientes, necesitamos buscar primero por DNI
+      // Primero, intentar autenticar con Supabase Auth usando el formato de email
+      // Esto es más eficiente y evita problemas con RLS al buscar por DNI
+      final email = 'paciente$dni@app.com';
+      
+      AuthResponse? authResponse;
+      try {
+        authResponse = await supabase.auth.signInWithPassword(
+          email: email,
+          password: password,
+        );
+      } catch (e) {
+        // Si falla la autenticación con Supabase Auth
+        if (kDebugMode) {
+          print('Error de autenticación Auth: $e');
+        }
+        
+        // Verificar si es un error de credenciales o usuario no encontrado
+        if (e is AuthException) {
+          if (e.message.toLowerCase().contains('invalid') ||
+              e.message.toLowerCase().contains('incorrect')) {
+            throw AppAuthException('Credenciales inválidas');
+          } else if (e.message.toLowerCase().contains('not found') ||
+                     e.message.toLowerCase().contains('does not exist')) {
+            throw AppAuthException('Paciente no encontrado');
+          }
+        }
+        throw AppAuthException('Credenciales inválidas');
+      }
+
+      if (authResponse.user == null) {
+        throw AppAuthException('Usuario no encontrado');
+      }
+
+      final authUid = authResponse.user!.id;
+
+      // Ahora buscar el paciente en la tabla por auth_uid (más confiable que DNI)
       final pacienteData = await supabase
           .from('pacientes')
           .select()
-          .eq('dni', dni)
-          .single();
+          .eq('auth_uid', authUid)
+          .maybeSingle();
+
+      // Si no se encuentra por auth_uid, intentar buscar por DNI como fallback
+      if (pacienteData == null || pacienteData.isEmpty) {
+        // Fallback: buscar por DNI
+        final pacienteDataByDni = await supabase
+            .from('pacientes')
+            .select()
+            .eq('dni', dni)
+            .maybeSingle();
+        
+        if (pacienteDataByDni == null || pacienteDataByDni.isEmpty) {
+          throw AppAuthException('Paciente no encontrado en la base de datos');
+        }
+        
+        // Verificar si está activo
+        if (pacienteDataByDni['activo'] == false) {
+          throw AppAuthException('Cuenta desactivada');
+        }
+        
+        return PacienteModel.fromSupabaseRow(pacienteDataByDni);
+      }
 
       // Verificar si está activo
       if (pacienteData['activo'] == false) {
         throw AppAuthException('Cuenta desactivada');
-      }
-
-      // Si el paciente tiene auth_uid, autenticamos con Supabase Auth
-      final authUid = pacienteData['auth_uid'];
-      if (authUid != null) {
-        try {
-          // Usamos el formato de email: pacienteDNI@app.com
-          final email = 'paciente$dni@app.com';
-          await supabase.auth.signInWithPassword(
-            email: email,
-            password: password,
-          );
-        } catch (e) {
-          // Si falla la autenticación
-          if (kDebugMode) {
-            print('Error de autenticación: $e');
-          }
-          throw AppAuthException('Credenciales inválidas');
-        }
-      } else {
-        throw AppAuthException('El paciente no tiene cuenta de usuario activa');
       }
 
       return PacienteModel.fromSupabaseRow(pacienteData);
@@ -173,7 +208,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       
       // Verificar si es un error de "no encontrado"
-      if (e.code == 'PGRST116' || e.message.contains('No rows')) {
+      if (e.code == 'PGRST116' || 
+          e.message.contains('No rows') ||
+          e.message.contains('Could not find')) {
         throw AppAuthException('Paciente no encontrado');
       }
       
@@ -185,7 +222,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       rethrow;
     } catch (e) {
       if (kDebugMode) {
-        print('Error inesperado: $e');
+        print('Error inesperado en login paciente: $e');
       }
       
       // Manejar errores de Supabase Auth y otros
@@ -196,7 +233,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           errorString.contains('invalid credentials') ||
           errorString.contains('incorrect')) {
         errorMessage = 'Credenciales inválidas';
-      } else if (errorString.contains('user not found')) {
+      } else if (errorString.contains('user not found') ||
+                 errorString.contains('does not exist')) {
         errorMessage = 'Paciente no encontrado';
       } else if (errorString.contains('connection') ||
                  errorString.contains('network') ||
