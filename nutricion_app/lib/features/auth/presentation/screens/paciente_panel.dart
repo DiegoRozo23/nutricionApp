@@ -6,6 +6,7 @@ import '../../../../shared/services/storage_service.dart';
 import '../../../../shared/services/supabase_service.dart';
 import '../../domain/entities/nutricionista.dart';
 import '../../domain/entities/paciente.dart';
+import '../../../chat/presentation/screens/rooms_screen.dart';
 import 'role_selection_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -420,8 +421,10 @@ class _PacientePanelState extends State<PacientePanel> {
                     icon: Icons.chat_bubble_outline,
                     color: const Color(0xFF9C27B0),
                     onTap: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Chat (Próximamente)')),
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => const RoomsScreen(),
+                        ),
                       );
                     },
                   ),

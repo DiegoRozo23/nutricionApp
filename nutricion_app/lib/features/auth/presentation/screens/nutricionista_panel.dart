@@ -8,6 +8,7 @@ import '../../../pacientes/domain/usecases/obtener_pacientes_usecase.dart';
 import '../../../pacientes/data/repositories/pacientes_repository_impl.dart';
 import '../../../pacientes/domain/repositories/pacientes_repository.dart';
 import '../../../pacientes/domain/entities/paciente.dart';
+import '../../../chat/presentation/screens/rooms_screen.dart';
 import 'role_selection_screen.dart';
 
 class NutricionistaPanel extends StatefulWidget {
@@ -249,8 +250,10 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                   icon: Icons.chat_bubble_outline,
                   color: const Color(0xFF9C27B0),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chats (Próximamente)')),
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const RoomsScreen(),
+                      ),
                     );
                   },
                 ),
