@@ -70,16 +70,84 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final authUid = response.user!.id;
 
       // Buscar el nutricionista en la tabla por auth_uid
-      final nutriResponse = await supabase
+      var nutriResponse = await supabase
           .from('nutricionistas')
           .select()
           .eq('auth_uid', authUid);
+
+      // Si no se encuentra, intentar buscar por email y sincronizar automáticamente
+      if (nutriResponse == null || nutriResponse.isEmpty) {
+        if (kDebugMode) {
+          print('⚠️ Nutricionista no encontrado por auth_uid. Intentando sincronizar automáticamente...');
+        }
+        
+        // Buscar por email (del usuario autenticado o de la credencial)
+        final email = response.user!.email ?? credential;
+        final nutriByEmail = await supabase
+            .from('nutricionistas')
+            .select()
+            .eq('email', email);
+
+        if (nutriByEmail != null && nutriByEmail.isNotEmpty) {
+          final nutriData = nutriByEmail.first as Map<String, dynamic>;
+          final nutriId = nutriData['id'] as String;
+          
+          // Sincronizar automáticamente el auth_uid
+          try {
+            await supabase
+                .from('nutricionistas')
+                .update({'auth_uid': authUid})
+                .eq('id', nutriId);
+            
+            if (kDebugMode) {
+              print('✅ auth_uid sincronizado automáticamente');
+            }
+            
+            // Buscar nuevamente con el auth_uid actualizado
+            nutriResponse = await supabase
+                .from('nutricionistas')
+                .select()
+                .eq('auth_uid', authUid);
+          } catch (e) {
+            if (kDebugMode) {
+              print('❌ Error al sincronizar auth_uid: $e');
+            }
+            // Continuar con los datos encontrados por email
+            nutriResponse = nutriByEmail;
+          }
+        }
+      }
 
       if (nutriResponse == null || nutriResponse.isEmpty) {
         throw AppAuthException('Usuario no encontrado en la base de datos');
       }
 
       final nutriData = nutriResponse.first as Map<String, dynamic>;
+      
+      // Verificar si el auth_uid coincide (si no, sincronizar)
+      if (nutriData['auth_uid'] != authUid) {
+        if (kDebugMode) {
+          print('🔄 Sincronizando auth_uid: ${nutriData['auth_uid']} -> $authUid');
+        }
+        
+        try {
+          await supabase
+              .from('nutricionistas')
+              .update({'auth_uid': authUid})
+              .eq('id', nutriData['id']);
+          
+          if (kDebugMode) {
+            print('✅ auth_uid sincronizado automáticamente');
+          }
+          
+          // Actualizar el dato local
+          nutriData['auth_uid'] = authUid;
+        } catch (e) {
+          if (kDebugMode) {
+            print('⚠️ No se pudo sincronizar automáticamente, pero continuando...');
+          }
+        }
+      }
 
       // Verificar si está activo
       if (nutriData['activo'] == false) {
