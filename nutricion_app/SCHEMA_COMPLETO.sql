@@ -215,8 +215,8 @@ ALTER TABLE chats.user_status ENABLE ROW LEVEL SECURITY;
 -- ============================================
 -- FUNCIONES AUXILIARES RLS
 -- ============================================
--- NOTA: Eliminamos las funciones auxiliares que causaban recursión infinita
--- Las políticas ahora usan EXISTS directo en lugar de funciones intermedias
+-- NOTA: Ya no usamos funciones auxiliares para evitar recursión infinita en RLS
+-- Las políticas usan EXISTS directos sin funciones intermedias
 
 -- ============================================
 -- FUNCIONES CREAR NUTRICIONISTAS
@@ -472,81 +472,74 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- POLÍTICAS RLS
 -- ============================================
 
+-- ============================================
+-- POLÍTICAS RLS PARA NUTRICIONISTAS
+-- ============================================
+
 -- Los nutricionistas solo ven sus propios datos
-CREATE POLICY "nutricionistas_select_own"
-  ON nutricionistas FOR SELECT
-  USING (auth_uid = auth.uid()::uuid);
+CREATE POLICY "nutricionistas_select_own" ON nutricionistas
+FOR SELECT USING (auth_uid = auth.uid()::uuid);
 
 -- Los nutricionistas pueden actualizar sus propios datos
-CREATE POLICY "nutricionistas_update_own"
-  ON nutricionistas FOR UPDATE
-  USING (auth_uid = auth.uid()::uuid)
-  WITH CHECK (auth_uid = auth.uid()::uuid);
+CREATE POLICY "nutricionistas_update_own" ON nutricionistas
+FOR UPDATE USING (auth_uid = auth.uid()::uuid)
+WITH CHECK (auth_uid = auth.uid()::uuid);
 
 -- IMPORTANTE: Permitir búsqueda pública por username/email para login
 -- Esto es necesario ANTES de autenticar, cuando no hay auth.uid() todavía
-CREATE POLICY "nutricionistas_public_username_email"
-  ON nutricionistas FOR SELECT
-  USING (
-    -- Permite acceso si no hay usuario autenticado (login público)
-    auth.uid() IS NULL
-    OR
-    -- O si es el propio nutricionista autenticado
-    auth_uid = auth.uid()::uuid
-  );
+CREATE POLICY "nutricionistas_public_username_email" ON nutricionistas
+FOR SELECT USING (
+  auth.uid() IS NULL OR auth_uid = auth.uid()::uuid
+);
 
-CREATE POLICY "Pacientes ven su nutricionista asignado"
-  ON nutricionistas FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1
-      FROM pacientes
-      WHERE pacientes.nutricionista_id = nutricionistas.id
-        AND pacientes.auth_uid = auth.uid()::uuid
-    )
-  );
+-- Pacientes pueden ver su nutricionista asignado
+CREATE POLICY "nutricionistas_visible_to_patients" ON nutricionistas
+FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM pacientes
+    WHERE pacientes.nutricionista_id = nutricionistas.id
+      AND pacientes.auth_uid = auth.uid()::uuid
+  )
+);
 
-CREATE POLICY "Nutricionistas ven sus pacientes"
-  ON pacientes FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM nutricionistas
-      WHERE nutricionistas.id = pacientes.nutricionista_id
-        AND nutricionistas.auth_uid = auth.uid()::uuid
-    )
-  );
+CREATE POLICY "pacientes_select_by_nutricionista" ON pacientes
+FOR SELECT USING (
+  EXISTS (
+    SELECT 1 FROM nutricionistas
+    WHERE nutricionistas.id = pacientes.nutricionista_id
+      AND nutricionistas.auth_uid = auth.uid()::uuid
+  )
+  OR
+  (auth_uid IS NOT NULL AND auth_uid = auth.uid()::uuid)
+);
 
-CREATE POLICY "Nutricionistas crean pacientes"
-  ON pacientes FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    -- Verificar directamente que el nutricionista_id pertenece al usuario autenticado
-    EXISTS (
-      SELECT 1 FROM nutricionistas
-      WHERE nutricionistas.id = pacientes.nutricionista_id
-        AND nutricionistas.auth_uid = auth.uid()::uuid
-    )
-  );
+CREATE POLICY "pacientes_insert_by_nutricionista" ON pacientes
+FOR INSERT TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM nutricionistas
+    WHERE nutricionistas.id = pacientes.nutricionista_id
+      AND nutricionistas.auth_uid = auth.uid()::uuid
+  )
+);
 
-CREATE POLICY "Nutricionistas actualizan sus pacientes"
-  ON pacientes FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM nutricionistas
-      WHERE nutricionistas.id = pacientes.nutricionista_id
-        AND nutricionistas.auth_uid = auth.uid()::uuid
-    )
-  );
+CREATE POLICY "pacientes_update_by_nutricionista" ON pacientes
+FOR UPDATE USING (
+  EXISTS (
+    SELECT 1 FROM nutricionistas
+    WHERE nutricionistas.id = pacientes.nutricionista_id
+      AND nutricionistas.auth_uid = auth.uid()::uuid
+  )
+);
 
-CREATE POLICY "Nutricionistas eliminan sus pacientes"
-  ON pacientes FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM nutricionistas
-      WHERE nutricionistas.id = pacientes.nutricionista_id
-        AND nutricionistas.auth_uid = auth.uid()::uuid
-    )
-  );
+CREATE POLICY "pacientes_delete_by_nutricionista" ON pacientes
+FOR DELETE USING (
+  EXISTS (
+    SELECT 1 FROM nutricionistas
+    WHERE nutricionistas.id = pacientes.nutricionista_id
+      AND nutricionistas.auth_uid = auth.uid()::uuid
+  )
+);
 
 CREATE POLICY "Pacientes ven sus datos"
   ON pacientes FOR SELECT
