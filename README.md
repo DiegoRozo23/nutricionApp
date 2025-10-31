@@ -102,9 +102,7 @@ nutricion_app/
 │       ├── widgets/             # Widgets reutilizables
 │       └── utils/               # Constantes y helpers
 │
-├── SCHEMA_COMPLETO.sql         # Esquema de BD completo
-├── SCHEMA_RLS_SIMPLIFICADO.sql # Políticas RLS alternativas
-├── CREAR_NUTRICIONISTA.sql     # Ejemplo de creación de usuarios
+├── SCHEMA_COMPLETO.sql         # Esquema de BD completo con RLS
 ├── requerimientos.md           # Documentación de requerimientos
 ├── pubspec.yaml
 └── README.md                    # Este archivo
