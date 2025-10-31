@@ -17,6 +17,7 @@ class FormularioPaciente extends StatefulWidget {
     required String nombre,
     required String apellidos,
     String? dni,
+    String? password, // Contraseña inicial (solo para crear)
     String? sexo,
     int? edad,
     double? peso,
@@ -58,8 +59,10 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
   late final TextEditingController _imcController;
   late final TextEditingController _historialMedicoController;
   late final TextEditingController _observacionesController;
+  late final TextEditingController _passwordController; // Solo para crear
   
   String? _sexoSeleccionado;
+  bool _obscurePassword = true;
 
   @override
   void initState() {
@@ -85,6 +88,7 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
     _observacionesController = TextEditingController(
       text: widget.observacionesInicial,
     );
+    _passwordController = TextEditingController(); // Solo para crear
     _sexoSeleccionado = widget.sexoInicial;
   }
 
@@ -99,6 +103,7 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
     _imcController.dispose();
     _historialMedicoController.dispose();
     _observacionesController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -118,10 +123,34 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
       return;
     }
 
+    // Validar que si se está creando (no editando), se requiere DNI y contraseña
+    if (!widget.isEditing) {
+      if (_dniController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('El DNI es obligatorio para crear un paciente'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+      
+      if (_passwordController.text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('La contraseña inicial es obligatoria'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
     widget.onSubmit(
       nombre: _nombreController.text.trim(),
       apellidos: _apellidosController.text.trim(),
       dni: _dniController.text.trim().isEmpty ? null : _dniController.text.trim(),
+      password: !widget.isEditing ? _passwordController.text.trim() : null,
       sexo: _sexoSeleccionado,
       edad: int.tryParse(_edadController.text.trim()),
       peso: double.tryParse(_pesoController.text.trim()),
@@ -192,13 +221,50 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
             // DNI
             TextFormField(
               controller: _dniController,
-              decoration: const InputDecoration(
-                labelText: 'DNI',
-                prefixIcon: Icon(Icons.badge),
+              decoration: InputDecoration(
+                labelText: widget.isEditing ? 'DNI' : 'DNI *',
+                prefixIcon: const Icon(Icons.badge),
+                hintText: widget.isEditing ? null : 'Obligatorio para crear cuenta',
               ),
               keyboardType: TextInputType.number,
+              enabled: !widget.isEditing, // No se puede editar DNI
             ),
             const SizedBox(height: 16),
+
+            // Contraseña inicial (solo al crear)
+            if (!widget.isEditing) ...[
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                decoration: InputDecoration(
+                  labelText: 'Contraseña inicial *',
+                  hintText: 'Contraseña para que el paciente inicie sesión',
+                  prefixIcon: const Icon(Icons.lock_outline),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword 
+                          ? Icons.visibility_outlined 
+                          : Icons.visibility_off_outlined,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
+                  ),
+                ),
+                validator: (value) {
+                  if (!widget.isEditing && (value == null || value.isEmpty)) {
+                    return 'La contraseña inicial es obligatoria';
+                  }
+                  if (!widget.isEditing && value != null && value.length < 4) {
+                    return 'La contraseña debe tener al menos 4 caracteres';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+            ],
 
             // Sexo
             DropdownButtonFormField<String>(

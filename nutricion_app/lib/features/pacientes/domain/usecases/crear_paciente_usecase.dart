@@ -12,6 +12,7 @@ class CrearPacienteUseCase {
     required String nombre,
     required String apellidos,
     String? dni,
+    String? password,
     String? sexo,
     int? edad,
     double? peso,
@@ -36,7 +37,29 @@ class CrearPacienteUseCase {
       );
     }
 
+    if (dni == null || dni.isEmpty) {
+      return PacientesFailure(
+        message: 'El DNI es obligatorio para crear un paciente',
+        code: 'empty_dni',
+      );
+    }
+
+    if (password == null || password.isEmpty) {
+      return PacientesFailure(
+        message: 'La contraseña inicial es obligatoria',
+        code: 'empty_password',
+      );
+    }
+
+    if (password.length < 4) {
+      return PacientesFailure(
+        message: 'La contraseña debe tener al menos 4 caracteres',
+        code: 'weak_password',
+      );
+    }
+
     // Crear objeto paciente (el ID y fechas se generan en el datasource)
+    // Nota: password se pasa directamente al datasource para crear cuenta en Auth
     final paciente = Paciente(
       id: '', // Se generará en el datasource
       nombre: nombre,
@@ -54,7 +77,7 @@ class CrearPacienteUseCase {
       updatedAt: DateTime.now(),
     );
 
-    return await repository.crearPaciente(paciente);
+    return await repository.crearPaciente(paciente, password: password);
   }
 }
 

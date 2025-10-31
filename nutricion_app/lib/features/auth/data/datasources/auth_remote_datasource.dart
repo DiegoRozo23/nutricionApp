@@ -149,15 +149,21 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final authUid = pacienteData['auth_uid'];
       if (authUid != null) {
         try {
+          // Usamos el formato de email: dni@nutricionapp.local
+          final email = '$dni@nutricionapp.local';
           await supabase.auth.signInWithPassword(
-            email: authUid, // Usamos el UUID como email
+            email: email,
             password: password,
           );
         } catch (e) {
-          // Si falla la autenticación, podríamos usar credenciales locales
-          // Por ahora, rechazamos
+          // Si falla la autenticación
+          if (kDebugMode) {
+            print('Error de autenticación: $e');
+          }
           throw AppAuthException('Credenciales inválidas');
         }
+      } else {
+        throw AppAuthException('El paciente no tiene cuenta de usuario activa');
       }
 
       return PacienteModel.fromSupabaseRow(pacienteData);

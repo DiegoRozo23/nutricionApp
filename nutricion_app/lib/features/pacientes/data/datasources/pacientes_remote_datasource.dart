@@ -26,7 +26,8 @@ abstract class PacientesRemoteDataSource {
   Future<PacienteModel> obtenerPacientePorId(String id);
 
   /// Crear un nuevo paciente
-  Future<PacienteModel> crearPaciente(PacienteModel paciente);
+  /// [password] es la contraseña inicial para crear la cuenta en Supabase Auth
+  Future<PacienteModel> crearPaciente(PacienteModel paciente, {String? password});
 
   /// Actualizar un paciente existente
   Future<PacienteModel> actualizarPaciente(PacienteModel paciente);
@@ -119,8 +120,18 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
   }
 
   @override
-  Future<PacienteModel> crearPaciente(PacienteModel paciente) async {
+  Future<PacienteModel> crearPaciente(PacienteModel paciente, {String? password}) async {
     try {
+      // Validar que se proporciona password al crear
+      if (password == null || password.isEmpty) {
+        throw PacientesException('La contraseña inicial es obligatoria');
+      }
+
+      // Validar que se proporciona DNI
+      if (paciente.dni == null || paciente.dni!.isEmpty) {
+        throw PacientesException('El DNI es obligatorio para crear un paciente');
+      }
+
       // Obtener el nutricionista actual
       final user = supabase.auth.currentUser;
       if (user == null) {
@@ -136,12 +147,35 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
 
       final nutricionistaId = nutriData['id'] as String;
 
-      // Preparar datos para insertar (sin id, fechas se generan automáticamente)
+      // Paso 1: Crear cuenta en Supabase Auth
+      // Usamos el DNI como email (formato: dni@nutricionapp.local)
+      // Esto permite que el paciente inicie sesión con DNI y contraseña
+      final email = '${paciente.dni}@nutricionapp.local';
+      
+      final authResponse = await supabase.auth.signUp(
+        email: email,
+        password: password,
+        data: {
+          'dni': paciente.dni,
+          'nombre': paciente.nombre,
+          'apellidos': paciente.apellidos,
+          'role': 'paciente',
+        },
+      );
+
+      if (authResponse.user == null) {
+        throw PacientesException('Error al crear la cuenta de usuario');
+      }
+
+      final authUid = authResponse.user!.id;
+
+      // Paso 2: Insertar paciente en la tabla con auth_uid
       final dataToInsert = {
+        'auth_uid': authUid,
         'nutricionista_id': nutricionistaId,
         'nombre': paciente.nombre,
         'apellidos': paciente.apellidos,
-        if (paciente.dni != null) 'dni': paciente.dni,
+        'dni': paciente.dni,
         if (paciente.sexo != null) 'sexo': paciente.sexo,
         if (paciente.edad != null) 'edad': paciente.edad,
         if (paciente.peso != null) 'peso': paciente.peso,

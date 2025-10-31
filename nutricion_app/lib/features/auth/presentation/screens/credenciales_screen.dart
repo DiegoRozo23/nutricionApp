@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/utils/constants.dart';
 import '../../../../shared/services/storage_service.dart';
+import '../../../../shared/services/secure_storage_service.dart';
 import 'nutricionista_panel.dart';
 import 'paciente_panel.dart';
 import '../../domain/usecases/login_usecase.dart';
@@ -48,12 +49,19 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
     if (rememberMe) {
       setState(() {
         _rememberMe = true;
-        // Intentar cargar credenciales guardadas
-        final savedCredential = storageService.getString('saved_credential_${widget.role}');
-        if (savedCredential != null) {
-          _credentialController.text = savedCredential;
-        }
       });
+      
+      // Cargar credencial (username/DNI)
+      final savedCredential = storageService.getString('saved_credential_${widget.role}');
+      if (savedCredential != null) {
+        _credentialController.text = savedCredential;
+      }
+      
+      // Cargar contraseña de forma segura
+      final savedPassword = await secureStorageService.getPassword(widget.role);
+      if (savedPassword != null) {
+        _passwordController.text = savedPassword;
+      }
     }
   }
 
@@ -94,6 +102,8 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
         if (_rememberMe) {
           await storageService.saveRememberMe(true);
           await storageService.saveString('saved_credential_${widget.role}', credential);
+          // Guardar contraseña de forma segura
+          await secureStorageService.savePassword(widget.role, password);
           // Guardar información del usuario y rol
           await storageService.saveString('current_role', widget.role);
           await storageService.saveString('current_user_id', result.token);
@@ -101,6 +111,7 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
           // Si no se marcó "Recordarme", limpiar datos previos
           await storageService.saveRememberMe(false);
           await storageService.remove('saved_credential_${widget.role}');
+          await secureStorageService.removePassword(widget.role);
         }
 
         if (!mounted) return;

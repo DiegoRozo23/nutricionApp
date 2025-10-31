@@ -31,7 +31,8 @@ abstract class PacientesRepository {
   Future<PacientesResult<Paciente>> obtenerPacientePorId(String id);
 
   /// Crear un nuevo paciente
-  Future<PacientesResult<Paciente>> crearPaciente(Paciente paciente);
+  /// [password] es la contraseña inicial para crear la cuenta en Supabase Auth
+  Future<PacientesResult<Paciente>> crearPaciente(Paciente paciente, {String? password});
 
   /// Actualizar un paciente existente
   Future<PacientesResult<Paciente>> actualizarPaciente(Paciente paciente);

@@ -62,7 +62,7 @@ class PacientesRepositoryImpl implements PacientesRepository {
   }
 
   @override
-  Future<PacientesResult<Paciente>> crearPaciente(Paciente paciente) async {
+  Future<PacientesResult<Paciente>> crearPaciente(Paciente paciente, {String? password}) async {
     try {
       // Convertir entidad a modelo para el datasource
       final model = PacienteModel(
@@ -85,7 +85,7 @@ class PacientesRepositoryImpl implements PacientesRepository {
         updatedAt: paciente.updatedAt,
       );
 
-      final createdPaciente = await remoteDataSource.crearPaciente(model);
+      final createdPaciente = await remoteDataSource.crearPaciente(model, password: password);
       return PacientesSuccess(createdPaciente.toEntity());
     } on PacientesException catch (e) {
       if (kDebugMode) {

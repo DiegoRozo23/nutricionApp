@@ -27,6 +27,7 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
     required String nombre,
     required String apellidos,
     String? dni,
+    String? password,
     String? sexo,
     int? edad,
     double? peso,
@@ -45,6 +46,7 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
       nombre: nombre,
       apellidos: apellidos,
       dni: dni,
+      password: password, // Contraseña inicial
       sexo: sexo,
       edad: edad,
       peso: peso,
