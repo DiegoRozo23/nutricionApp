@@ -105,29 +105,69 @@ CREATE TABLE planes_nutricionales (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Tabla de chats/rooms
-CREATE TABLE chats (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  tipo VARCHAR(20) DEFAULT 'direct', -- direct (1 a 1)
-  created_at TIMESTAMP DEFAULT NOW()
+-- ============================================
+-- SCHEMA DE CHAT (flutter_supabase_chat_core)
+-- ============================================
+
+-- Crear schema para chat
+CREATE SCHEMA IF NOT EXISTS chats;
+
+-- Tabla de usuarios del chat (vinculada con auth.users)
+CREATE TABLE chats.users (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  name TEXT,
+  avatar_url TEXT,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Tabla de miembros del chat (many-to-many)
-CREATE TABLE chat_members (
-  chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL, -- auth.users.id
-  role VARCHAR(20) NOT NULL, -- 'nutricionista' o 'paciente'
-  PRIMARY KEY (chat_id, user_id)
+-- Tabla de salas/rooms del chat
+CREATE TABLE chats.rooms (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT,
+  description TEXT,
+  image_url TEXT,
+  type TEXT DEFAULT 'direct', -- direct, group, channel
+  last_message_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabla de miembros de las salas (many-to-many)
+CREATE TABLE chats.room_members (
+  room_id UUID REFERENCES chats.rooms(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES chats.users(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'member', -- admin, owner, member
+  created_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (room_id, user_id)
 );
 
 -- Tabla de mensajes del chat
-CREATE TABLE mensajes (
+CREATE TABLE chats.messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  chat_id UUID REFERENCES chats(id) ON DELETE CASCADE,
-  sender_id UUID NOT NULL, -- auth.users.id
-  contenido TEXT NOT NULL,
-  leido BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP DEFAULT NOW()
+  room_id UUID REFERENCES chats.rooms(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES chats.users(id) ON DELETE CASCADE,
+  message JSONB NOT NULL,
+  status TEXT DEFAULT 'delivered', -- sent, delivered, read
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabla de estado de escritura (typing status)
+CREATE TABLE chats.typing_status (
+  room_id UUID REFERENCES chats.rooms(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES chats.users(id) ON DELETE CASCADE,
+  is_typing BOOLEAN DEFAULT FALSE,
+  updated_at TIMESTAMP DEFAULT NOW(),
+  PRIMARY KEY (room_id, user_id)
+);
+
+-- Tabla de estado online de usuarios
+CREATE TABLE chats.user_status (
+  user_id UUID PRIMARY KEY REFERENCES chats.users(id) ON DELETE CASCADE,
+  is_online BOOLEAN DEFAULT FALSE,
+  last_seen_at TIMESTAMP DEFAULT NOW()
 );
 
 -- ============================================
@@ -147,12 +187,19 @@ CREATE INDEX idx_planes_paciente ON planes_nutricionales(paciente_id);
 CREATE INDEX idx_planes_nutricionista ON planes_nutricionales(nutricionista_id);
 CREATE INDEX idx_planes_estado ON planes_nutricionales(estado);
 
-CREATE INDEX idx_chat_members_chat ON chat_members(chat_id);
-CREATE INDEX idx_chat_members_user ON chat_members(user_id);
+CREATE INDEX idx_chat_users_created ON chats.users(created_at);
+CREATE INDEX idx_chat_rooms_type ON chats.rooms(type);
+CREATE INDEX idx_chat_rooms_last_message ON chats.rooms(last_message_at DESC);
 
-CREATE INDEX idx_mensajes_chat ON mensajes(chat_id);
-CREATE INDEX idx_mensajes_sender ON mensajes(sender_id);
-CREATE INDEX idx_mensajes_created ON mensajes(created_at DESC);
+CREATE INDEX idx_chat_room_members_room ON chats.room_members(room_id);
+CREATE INDEX idx_chat_room_members_user ON chats.room_members(user_id);
+
+CREATE INDEX idx_chat_messages_room ON chats.messages(room_id);
+CREATE INDEX idx_chat_messages_user ON chats.messages(user_id);
+CREATE INDEX idx_chat_messages_created ON chats.messages(created_at DESC);
+
+CREATE INDEX idx_chat_typing_status_room ON chats.typing_status(room_id);
+CREATE INDEX idx_chat_user_status_online ON chats.user_status(is_online);
 
 -- ============================================
 -- TRIGGERS PARA UPDATED_AT AUTOMÁTICO
@@ -177,6 +224,33 @@ FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
 CREATE TRIGGER set_timestamp_planes
 BEFORE UPDATE ON planes_nutricionales
 FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+
+-- Triggers para tablas de chat
+CREATE TRIGGER set_timestamp_chat_users
+BEFORE UPDATE ON chats.users
+FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+
+CREATE TRIGGER set_timestamp_chat_rooms
+BEFORE UPDATE ON chats.rooms
+FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+
+CREATE TRIGGER set_timestamp_chat_messages
+BEFORE UPDATE ON chats.messages
+FOR EACH ROW EXECUTE FUNCTION trigger_set_timestamp();
+
+-- Trigger para popular chats.users cuando se crea un usuario en auth.users
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO chats.users (id, name)
+  VALUES (NEW.id, COALESCE(NEW.raw_user_meta_data->>'name', 'User'));
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 ```
 
 ### 6️⃣ Configurar Row Level Security (RLS)
@@ -191,9 +265,14 @@ Activa RLS en todas las tablas:
 ALTER TABLE nutricionistas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE pacientes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE planes_nutricionales ENABLE ROW LEVEL SECURITY;
-ALTER TABLE chats ENABLE ROW LEVEL SECURITY;
-ALTER TABLE chat_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE mensajes ENABLE ROW LEVEL SECURITY;
+
+-- RLS para tablas de chat
+ALTER TABLE chats.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chats.rooms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chats.room_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chats.messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chats.typing_status ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chats.user_status ENABLE ROW LEVEL SECURITY;
 
 -- ============================================
 -- POLÍTICAS PARA NUTRICIONISTAS
@@ -329,63 +408,161 @@ CREATE POLICY "Pacientes pueden ver sus planes"
   );
 
 -- ============================================
--- POLÍTICAS PARA CHATS Y CHAT_MEMBERS
+-- POLÍTICAS PARA CHATS.USERS
 -- ============================================
 
--- Miembros del chat pueden ver los chats
-CREATE POLICY "Miembros pueden ver sus chats"
-  ON chats FOR SELECT
+-- INSERT: Se hace automáticamente por trigger
+CREATE POLICY "Usuarios pueden ver todos los perfiles"
+  ON chats.users FOR SELECT
+  USING (true);
+
+-- UPDATE: Solo el mismo usuario
+CREATE POLICY "Usuarios pueden actualizar su perfil"
+  ON chats.users FOR UPDATE
+  USING (auth.uid() = id);
+
+-- ============================================
+-- POLÍTICAS PARA CHATS.ROOMS
+-- ============================================
+
+-- INSERT: Todos los usuarios autenticados
+CREATE POLICY "Usuarios pueden crear salas"
+  ON chats.rooms FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- SELECT: Solo miembros de la sala
+CREATE POLICY "Miembros pueden ver sus salas"
+  ON chats.rooms FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM chat_members
-      WHERE chat_members.chat_id = chats.id
-      AND chat_members.user_id = auth.uid()::uuid
+      SELECT 1 FROM chats.room_members
+      WHERE chats.room_members.room_id = chats.rooms.id
+      AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
--- Miembros pueden ver si pertenecen al chat
-CREATE POLICY "Miembros pueden ver sus membresías"
-  ON chat_members FOR SELECT
+-- UPDATE: Solo miembros de la sala
+CREATE POLICY "Miembros pueden actualizar salas"
+  ON chats.rooms FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM chats.room_members
+      WHERE chats.room_members.room_id = chats.rooms.id
+      AND chats.room_members.user_id = auth.uid()::uuid
+    )
+  );
+
+-- DELETE: Solo miembros de la sala
+CREATE POLICY "Miembros pueden eliminar salas"
+  ON chats.rooms FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM chats.room_members
+      WHERE chats.room_members.room_id = chats.rooms.id
+      AND chats.room_members.user_id = auth.uid()::uuid
+    )
+  );
+
+-- ============================================
+-- POLÍTICAS PARA CHATS.ROOM_MEMBERS
+-- ============================================
+
+-- INSERT: Autenticados para salas donde son miembros o para crear nuevas membresías
+CREATE POLICY "Usuarios pueden agregar miembros"
+  ON chats.room_members FOR INSERT
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+-- SELECT: Ver tus propias membresías
+CREATE POLICY "Ver tus membresías"
+  ON chats.room_members FOR SELECT
+  USING (user_id = auth.uid()::uuid);
+
+-- UPDATE: Solo tu propia membresía
+CREATE POLICY "Actualizar tu membresía"
+  ON chats.room_members FOR UPDATE
+  USING (user_id = auth.uid()::uuid);
+
+-- DELETE: Cualquier miembro puede eliminar
+CREATE POLICY "Eliminar membresías"
+  ON chats.room_members FOR DELETE
+  USING (auth.uid() IS NOT NULL);
+
+-- ============================================
+-- POLÍTICAS PARA CHATS.MESSAGES
+-- ============================================
+
+-- INSERT: Solo si eres miembro del room
+CREATE POLICY "Miembros pueden enviar mensajes"
+  ON chats.messages FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM chats.room_members
+      WHERE chats.room_members.room_id = NEW.room_id
+      AND chats.room_members.user_id = auth.uid()::uuid
+    )
+  );
+
+-- SELECT: Solo si eres miembro del room
+CREATE POLICY "Miembros pueden ver mensajes"
+  ON chats.messages FOR SELECT
+  USING (
+    EXISTS (
+      SELECT 1 FROM chats.room_members
+      WHERE chats.room_members.room_id = chats.messages.room_id
+      AND chats.room_members.user_id = auth.uid()::uuid
+    )
+  );
+
+-- UPDATE: Solo tus propios mensajes
+CREATE POLICY "Actualizar tus mensajes"
+  ON chats.messages FOR UPDATE
+  USING (user_id = auth.uid()::uuid);
+
+-- DELETE: Solo tus propios mensajes
+CREATE POLICY "Eliminar tus mensajes"
+  ON chats.messages FOR DELETE
   USING (user_id = auth.uid()::uuid);
 
 -- ============================================
--- POLÍTICAS PARA MENSAJES DEL CHAT
+-- POLÍTICAS PARA CHATS.TYPING_STATUS
 -- ============================================
 
--- Usuarios pueden ver mensajes solo si son miembros del chat
-CREATE POLICY "Miembros pueden ver mensajes del chat"
-  ON mensajes FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM chat_members
-      WHERE chat_members.chat_id = mensajes.chat_id
-      AND chat_members.user_id = auth.uid()::uuid
-    )
-  );
-
--- Usuarios pueden enviar mensajes solo si son miembros del chat
-CREATE POLICY "Miembros pueden enviar mensajes"
-  ON mensajes FOR INSERT
+-- Solo miembro del room
+CREATE POLICY "Insertar typing status"
+  ON chats.typing_status FOR INSERT
   WITH CHECK (
-    sender_id = auth.uid()::uuid
-    AND EXISTS (
-      SELECT 1 FROM chat_members
-      WHERE chat_members.chat_id = NEW.chat_id
-      AND chat_members.user_id = auth.uid()::uuid
+    EXISTS (
+      SELECT 1 FROM chats.room_members
+      WHERE chats.room_members.room_id = NEW.room_id
+      AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
 
--- Usuarios pueden actualizar sus mensajes recibidos (marcar como leído)
-CREATE POLICY "Usuarios pueden marcar mensajes como leídos"
-  ON mensajes FOR UPDATE
+CREATE POLICY "Ver typing status"
+  ON chats.typing_status FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM chat_members
-      WHERE chat_members.chat_id = mensajes.chat_id
-      AND chat_members.user_id = auth.uid()::uuid
-      AND chat_members.user_id != mensajes.sender_id
+      SELECT 1 FROM chats.room_members
+      WHERE chats.room_members.room_id = chats.typing_status.room_id
+      AND chats.room_members.user_id = auth.uid()::uuid
     )
   );
+
+CREATE POLICY "Actualizar typing status"
+  ON chats.typing_status FOR UPDATE
+  USING (user_id = auth.uid()::uuid);
+
+-- ============================================
+-- POLÍTICAS PARA CHATS.USER_STATUS
+-- ============================================
+
+CREATE POLICY "Ver estado de usuarios"
+  ON chats.user_status FOR SELECT
+  USING (true);
+
+CREATE POLICY "Actualizar tu estado"
+  ON chats.user_status FOR UPDATE
+  USING (user_id = auth.uid()::uuid);
 ```
 
 ### 7️⃣ Crear un nutricionista de prueba
