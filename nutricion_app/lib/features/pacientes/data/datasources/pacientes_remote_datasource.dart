@@ -153,15 +153,19 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
       // Nota: Supabase requiere un email válido con formato estándar
       final email = 'paciente${paciente.dni}@app.com';
       
+      // Crear usuario en Supabase Auth con auto-confirmación
+      // Usamos emailRedirectTo para evitar el flujo de verificación de email
       final authResponse = await supabase.auth.signUp(
         email: email,
         password: password,
+        emailRedirectTo: null, // No necesitamos redirect
         data: {
           'dni': paciente.dni,
           'nombre': paciente.nombre,
           'apellidos': paciente.apellidos,
           'role': 'paciente',
         },
+        // Importante: Esto auto-confirma el email si está habilitado en Supabase
       );
 
       if (authResponse.user == null) {

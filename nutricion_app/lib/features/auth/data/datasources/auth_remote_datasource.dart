@@ -151,7 +151,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         
         // Verificar si es un error de credenciales o usuario no encontrado
         if (e is AuthException) {
-          if (e.message.toLowerCase().contains('invalid') ||
+          if (e.message.toLowerCase().contains('email not confirmed') ||
+              e.message.toLowerCase().contains('email not verified')) {
+            throw AppAuthException(
+              'El email no está confirmado. Contacta a tu nutricionista para activar tu cuenta.',
+            );
+          } else if (e.message.toLowerCase().contains('invalid') ||
               e.message.toLowerCase().contains('incorrect')) {
             throw AppAuthException('Credenciales inválidas');
           } else if (e.message.toLowerCase().contains('not found') ||
