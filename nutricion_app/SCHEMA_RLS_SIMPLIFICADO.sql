@@ -103,16 +103,16 @@ CREATE POLICY "pacientes_select_by_nutricionista"
 
 -- Los nutricionistas pueden crear pacientes
 -- IMPORTANTE: Esta política verifica que el nutricionista_id sea del nutricionista autenticado
+-- En WITH CHECK para INSERT, nutricionista_id se refiere directamente al valor que se inserta
 CREATE POLICY "pacientes_insert_by_nutricionista"
   ON pacientes FOR INSERT
   WITH CHECK (
-    -- Verificar que existe un nutricionista con el auth_uid del usuario autenticado
-    -- Y que el nutricionista_id que se inserta es el de ese nutricionista
-    EXISTS (
-      SELECT 1 FROM nutricionistas
-      WHERE nutricionistas.auth_uid = auth.uid()::uuid
-        AND nutricionistas.id = nutricionista_id
-        AND nutricionistas.activo = TRUE
+    -- Verificar que el nutricionista_id que se inserta pertenece a un nutricionista
+    -- cuyo auth_uid coincide con el usuario autenticado
+    nutricionista_id IN (
+      SELECT id FROM nutricionistas
+      WHERE auth_uid = auth.uid()::uuid
+        AND activo = TRUE
     )
   );
 
