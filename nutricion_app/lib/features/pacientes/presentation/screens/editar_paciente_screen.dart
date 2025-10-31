@@ -102,22 +102,25 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
         backgroundColor: const Color(0xFF4CAF50),
         foregroundColor: Colors.white,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : FormularioPaciente(
-              isEditing: true,
-              nombreInicial: widget.paciente.nombre,
-              apellidosInicial: widget.paciente.apellidos,
-              dniInicial: widget.paciente.dni,
-              sexoInicial: widget.paciente.sexo,
-              edadInicial: widget.paciente.edad,
-              pesoInicial: widget.paciente.peso,
-              tallaInicial: widget.paciente.talla,
-              imcInicial: widget.paciente.imc,
-              historialMedicoInicial: widget.paciente.historialMedico,
-              observacionesInicial: widget.paciente.observaciones,
-              onSubmit: _actualizarPaciente,
-            ),
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : FormularioPaciente(
+                isEditing: true,
+                nombreInicial: widget.paciente.nombre,
+                apellidosInicial: widget.paciente.apellidos,
+                dniInicial: widget.paciente.dni,
+                sexoInicial: widget.paciente.sexo,
+                edadInicial: widget.paciente.edad,
+                pesoInicial: widget.paciente.peso,
+                tallaInicial: widget.paciente.talla,
+                imcInicial: widget.paciente.imc,
+                historialMedicoInicial: widget.paciente.historialMedico,
+                observacionesInicial: widget.paciente.observaciones,
+                onSubmit: _actualizarPaciente,
+              ),
+      ),
     );
   }
 }

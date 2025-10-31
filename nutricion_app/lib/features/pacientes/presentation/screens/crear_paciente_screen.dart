@@ -87,12 +87,15 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
         backgroundColor: const Color(0xFF4CAF50),
         foregroundColor: Colors.white,
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : FormularioPaciente(
-              isEditing: false,
-              onSubmit: _crearPaciente,
-            ),
+      resizeToAvoidBottomInset: true,
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : FormularioPaciente(
+                isEditing: false,
+                onSubmit: _crearPaciente,
+              ),
+      ),
     );
   }
 }

@@ -138,10 +138,22 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
 
   @override
   Widget build(BuildContext context) {
+    // Obtener el padding inferior del viewport (teclado/navegación)
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+    final safeAreaBottom = MediaQuery.of(context).padding.bottom;
+    final extraBottomPadding = bottomPadding > 0 
+        ? bottomPadding 
+        : (safeAreaBottom > 0 ? safeAreaBottom + 24 : 32);
+
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.only(
+          left: 16,
+          right: 16,
+          top: 16,
+          bottom: extraBottomPadding,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -288,19 +300,26 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
             const SizedBox(height: 32),
 
             // Botón de envío
-            SizedBox(
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _handleSubmit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Colors.white,
-                ),
-                child: Text(
-                  widget.isEditing ? 'Actualizar Paciente' : 'Crear Paciente',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
+            Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).padding.bottom > 0
+                    ? MediaQuery.of(context).padding.bottom + 16
+                    : 16,
+              ),
+              child: SizedBox(
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _handleSubmit,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: Text(
+                    widget.isEditing ? 'Actualizar Paciente' : 'Crear Paciente',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
