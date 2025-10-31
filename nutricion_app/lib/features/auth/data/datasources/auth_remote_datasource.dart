@@ -192,7 +192,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         
         // Extraer DNI del email o de los metadatos
         final userMetadata = authResponse.user!.userMetadata;
-        final pacienteDni = userMetadata['dni'] as String? ?? dni;
+        final pacienteDni = (userMetadata?['dni'] as String?) ?? dni;
         
         // Crear registro básico en la tabla pacientes
         // Nota: nutricionista_id puede ser NULL inicialmente
