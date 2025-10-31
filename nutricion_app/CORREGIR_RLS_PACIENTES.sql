@@ -12,15 +12,14 @@
 DROP POLICY IF EXISTS "Nutricionistas crean pacientes" ON pacientes;
 
 -- Crear la política corregida
--- En WITH CHECK para INSERT, podemos referenciar columnas directamente
--- sin prefijo de tabla (se refiere automáticamente a los valores insertados)
+-- En WITH CHECK para INSERT, referenciamos la columna directamente
+-- (en el contexto de INSERT, se refiere a los valores que se insertan)
 CREATE POLICY "Nutricionistas crean pacientes"
   ON pacientes FOR INSERT
   WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM nutricionistas
-      WHERE nutricionistas.auth_uid = auth.uid()::uuid
-        AND nutricionistas.id = nutricionista_id
+    nutricionista_id IN (
+      SELECT id FROM nutricionistas
+      WHERE auth_uid = auth.uid()::uuid
     )
   );
 
