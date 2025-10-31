@@ -7,14 +7,21 @@
 -- Solución: Eliminar políticas duplicadas o problemáticas
 -- ============================================
 
--- PASO 1: Eliminar políticas problemáticas de nutricionistas
+-- PASO 1: Eliminar TODAS las políticas que dependen de las funciones primero
 DROP POLICY IF EXISTS "Ver propios datos" ON nutricionistas;
 DROP POLICY IF EXISTS "Actualizar propios datos" ON nutricionistas;
 DROP POLICY IF EXISTS "Buscar para login" ON nutricionistas;
 DROP POLICY IF EXISTS "Pacientes ven su nutricionista asignado" ON nutricionistas;
+DROP POLICY IF EXISTS "Nutricionistas crean pacientes" ON pacientes;
+DROP POLICY IF EXISTS pacientes_insert_by_nutricionista ON pacientes;
+DROP POLICY IF EXISTS pacientes_select_by_nutricionista ON pacientes;
+DROP POLICY IF EXISTS pacientes_update_by_nutricionista ON pacientes;
+DROP POLICY IF EXISTS pacientes_delete_by_nutricionista ON pacientes;
 
--- PASO 2: Eliminar función problemática que causa recursión
+-- PASO 2: Ahora sí eliminar funciones auxiliares problemáticas
 DROP FUNCTION IF EXISTS get_current_nutricionista_id();
+DROP FUNCTION IF EXISTS get_nutricionista_id_from_auth();
+DROP FUNCTION IF EXISTS can_insert_paciente_for_nutricionista(UUID);
 
 -- PASO 3: Recrear políticas SIMPLES sin funciones auxiliares complejas
 -- Los nutricionistas solo ven sus propios datos
