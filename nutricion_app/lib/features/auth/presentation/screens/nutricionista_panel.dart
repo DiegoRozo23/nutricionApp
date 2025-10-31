@@ -160,6 +160,16 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                         value: _isLoadingPacientes ? '-' : '$_totalPacientes',
                         icon: Icons.people_outline,
                         color: const Color(0xFF2196F3),
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const ListaPacientesScreen(),
+                            ),
+                          ).then((_) {
+                            // Recargar estadísticas cuando vuelva
+                            _cargarEstadisticas();
+                          });
+                        },
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -256,17 +266,19 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    Widget card = Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -311,6 +323,15 @@ class _StatCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return GestureDetector(
+        onTap: onTap,
+        child: card,
+      );
+    }
+
+    return card;
   }
 }
 
