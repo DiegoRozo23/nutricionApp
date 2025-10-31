@@ -4,11 +4,12 @@ import '../models/nutricionista_model.dart';
 import '../models/paciente_model.dart';
 
 /// Excepción personalizada para errores de autenticación
-class AuthException implements Exception {
+/// Renombrada para evitar conflicto con AuthException de Supabase
+class AppAuthException implements Exception {
   final String message;
   final String? code;
 
-  AuthException(this.message, {this.code});
+  AppAuthException(this.message, {this.code});
 
   @override
   String toString() => message;
@@ -63,7 +64,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       );
 
       if (response.user == null) {
-        throw AuthException('Usuario no encontrado');
+        throw AppAuthException('Usuario no encontrado');
       }
 
       final authUid = response.user!.id;
@@ -77,7 +78,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       // Verificar si está activo
       if (nutriData['activo'] == false) {
-        throw AuthException('Cuenta desactivada');
+        throw AppAuthException('Cuenta desactivada');
       }
 
       return NutricionistaModel.fromSupabaseRow(nutriData);
@@ -85,19 +86,44 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (kDebugMode) {
         print('Error de Postgrest: ${e.message}');
       }
-      throw AuthException(
-        'Error al autenticar',
+      
+      // Verificar si es un error de "no encontrado"
+      if (e.code == 'PGRST116' || e.message.contains('No rows')) {
+        throw AppAuthException('Usuario no encontrado en la base de datos');
+      }
+      
+      throw AppAuthException(
+        'Error al buscar nutricionista: ${e.message}',
         code: e.code,
       );
-    } on AuthException {
-      rethrow;
     } catch (e) {
       if (kDebugMode) {
         print('Error inesperado: $e');
       }
-      throw AuthException(
-        'Error al iniciar sesión: ${e.toString()}',
-      );
+      
+      // Manejar errores de Supabase Auth y otros
+      String errorMessage = 'Error al iniciar sesión';
+      String errorString = e.toString().toLowerCase();
+      
+      if (errorString.contains('invalid login credentials') ||
+          errorString.contains('invalid credentials') ||
+          errorString.contains('incorrect')) {
+        errorMessage = 'Credenciales inválidas';
+      } else if (errorString.contains('email not confirmed') ||
+                 errorString.contains('email not verified')) {
+        errorMessage = 'Email no confirmado';
+      } else if (errorString.contains('user not found')) {
+        errorMessage = 'Usuario no encontrado';
+      } else if (errorString.contains('connection') ||
+                 errorString.contains('network') ||
+                 errorString.contains('timeout')) {
+        errorMessage = 'Error de conexión. Verifica tu internet';
+      } else if (e is AuthException) {
+        // Si es AuthException de Supabase, usar su mensaje
+        errorMessage = e.message;
+      }
+      
+      throw AppAuthException(errorMessage);
     }
   }
 
@@ -116,7 +142,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       // Verificar si está activo
       if (pacienteData['activo'] == false) {
-        throw AuthException('Cuenta desactivada');
+        throw AppAuthException('Cuenta desactivada');
       }
 
       // Si el paciente tiene auth_uid, autenticamos con Supabase Auth
@@ -130,7 +156,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         } catch (e) {
           // Si falla la autenticación, podríamos usar credenciales locales
           // Por ahora, rechazamos
-          throw AuthException('Credenciales inválidas');
+          throw AppAuthException('Credenciales inválidas');
         }
       }
 
@@ -139,19 +165,42 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (kDebugMode) {
         print('Error de Postgrest: ${e.message}');
       }
-      throw AuthException(
-        'Error al autenticar',
+      
+      // Verificar si es un error de "no encontrado"
+      if (e.code == 'PGRST116' || e.message.contains('No rows')) {
+        throw AppAuthException('Paciente no encontrado');
+      }
+      
+      throw AppAuthException(
+        'Error al buscar paciente: ${e.message}',
         code: e.code,
       );
-    } on AuthException {
+    } on AppAuthException {
       rethrow;
     } catch (e) {
       if (kDebugMode) {
         print('Error inesperado: $e');
       }
-      throw AuthException(
-        'Error al iniciar sesión: ${e.toString()}',
-      );
+      
+      // Manejar errores de Supabase Auth y otros
+      String errorMessage = 'Error al iniciar sesión';
+      String errorString = e.toString().toLowerCase();
+      
+      if (errorString.contains('invalid login credentials') ||
+          errorString.contains('invalid credentials') ||
+          errorString.contains('incorrect')) {
+        errorMessage = 'Credenciales inválidas';
+      } else if (errorString.contains('user not found')) {
+        errorMessage = 'Paciente no encontrado';
+      } else if (errorString.contains('connection') ||
+                 errorString.contains('network') ||
+                 errorString.contains('timeout')) {
+        errorMessage = 'Error de conexión. Verifica tu internet';
+      } else if (e is AuthException) {
+        errorMessage = e.message;
+      }
+      
+      throw AppAuthException(errorMessage);
     }
   }
 
@@ -163,7 +212,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (kDebugMode) {
         print('Error al cerrar sesión: $e');
       }
-      throw AuthException('Error al cerrar sesión');
+      throw AppAuthException('Error al cerrar sesión');
     }
   }
 

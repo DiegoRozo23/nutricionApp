@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/utils/constants.dart';
+import '../../../../shared/services/storage_service.dart';
 import 'nutricionista_panel.dart';
 import 'paciente_panel.dart';
 import '../../domain/usecases/login_usecase.dart';
@@ -38,6 +39,22 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
     super.initState();
     _repository = AuthRepositoryImpl();
     _loginUseCase = LoginUseCase(_repository);
+    _loadRememberedCredentials();
+  }
+
+  /// Cargar credenciales guardadas si existe "Recordarme"
+  Future<void> _loadRememberedCredentials() async {
+    final rememberMe = storageService.getRememberMe();
+    if (rememberMe) {
+      setState(() {
+        _rememberMe = true;
+        // Intentar cargar credenciales guardadas
+        final savedCredential = storageService.getString('saved_credential_${widget.role}');
+        if (savedCredential != null) {
+          _credentialController.text = savedCredential;
+        }
+      });
+    }
   }
 
   @override
@@ -73,6 +90,21 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
       if (!mounted) return;
 
       if (result is auth_domain.AuthSuccess) {
+        // Login exitoso - Guardar datos si "Recordarme" está activado
+        if (_rememberMe) {
+          await storageService.saveRememberMe(true);
+          await storageService.saveString('saved_credential_${widget.role}', credential);
+          // Guardar información del usuario y rol
+          await storageService.saveString('current_role', widget.role);
+          await storageService.saveString('current_user_id', result.token);
+        } else {
+          // Si no se marcó "Recordarme", limpiar datos previos
+          await storageService.saveRememberMe(false);
+          await storageService.remove('saved_credential_${widget.role}');
+        }
+
+        if (!mounted) return;
+
         // Login exitoso
         if (widget.role == 'nutricionista') {
           Navigator.of(context).pushAndRemoveUntil(
@@ -86,11 +118,23 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
           );
         }
       } else if (result is auth_domain.AuthFailure) {
-        // Login fallido
+        // Login fallido - Mostrar mensaje mejorado
+        String errorMessage = result.message;
+        
+        // Mejorar mensajes de error genéricos
+        if (result.message.contains('Invalid login credentials') || 
+            result.message.contains('Credenciales inválidas')) {
+          errorMessage = 'Usuario o contraseña incorrectos';
+        } else if (result.message.contains('User not found') ||
+                   result.message.contains('no encontrado')) {
+          errorMessage = 'Usuario no encontrado';
+        }
+        
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(result.message),
+            content: Text(errorMessage),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
           ),
         );
       }

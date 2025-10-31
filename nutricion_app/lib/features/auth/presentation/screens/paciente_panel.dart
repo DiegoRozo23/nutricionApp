@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../domain/usecases/logout_usecase.dart';
 import '../../data/repositories/auth_repository_impl.dart';
+import '../../../../shared/services/storage_service.dart';
 import 'role_selection_screen.dart';
 
 class PacientePanel extends StatefulWidget {
@@ -43,6 +44,12 @@ class _PacientePanelState extends State<PacientePanel> {
 
     try {
       await _logoutUseCase();
+      
+      if (!mounted) return;
+      
+      // Limpiar datos guardados localmente
+      await storageService.remove('current_role');
+      await storageService.remove('current_user_id');
       
       if (!mounted) return;
       

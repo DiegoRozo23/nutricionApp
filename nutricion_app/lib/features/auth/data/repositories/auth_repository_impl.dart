@@ -5,6 +5,9 @@ import '../../domain/entities/paciente.dart';
 import '../datasources/auth_remote_datasource.dart';
 import '../../../../shared/services/supabase_service.dart';
 
+// Importar la excepción renombrada
+import '../datasources/auth_remote_datasource.dart' as auth_data;
+
 /// Implementación del repositorio de autenticación
 /// 
 /// Esta clase coordina las llamadas entre el dominio y las fuentes de datos
@@ -31,7 +34,7 @@ class AuthRepositoryImpl implements AuthRepository {
         nutricionista: nutricionista,
         token: nutricionista.id,
       );
-    } on AuthException catch (e) {
+    } on auth_data.AppAuthException catch (e) {
       if (kDebugMode) {
         print('Error de autenticación: ${e.message}');
       }
@@ -64,7 +67,7 @@ class AuthRepositoryImpl implements AuthRepository {
         paciente: paciente,
         token: paciente.id,
       );
-    } on AuthException catch (e) {
+    } on auth_data.AppAuthException catch (e) {
       if (kDebugMode) {
         print('Error de autenticación: ${e.message}');
       }
@@ -86,7 +89,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() async {
     try {
       await remoteDataSource.logout();
-    } on AuthException catch (e) {
+    } on auth_data.AppAuthException catch (e) {
       if (kDebugMode) {
         print('Error al cerrar sesión: ${e.message}');
       }
