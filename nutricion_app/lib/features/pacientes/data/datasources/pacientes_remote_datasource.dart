@@ -194,12 +194,20 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         'activo': paciente.activo,
       };
 
-      final insertedData = await supabase
+      // Insertar paciente y obtener los datos insertados
+      final insertedResponse = await supabase
           .from('pacientes')
           .insert(dataToInsert)
-          .select()
-          .single();
+          .select();
 
+      // Verificar que se insertó correctamente
+      if (insertedResponse == null || insertedResponse.isEmpty) {
+        throw PacientesException('Error al crear el paciente en la base de datos');
+      }
+
+      // Tomar el primer resultado (debería ser el único)
+      final insertedData = insertedResponse.first as Map<String, dynamic>;
+      
       return PacienteModel.fromSupabaseRow(insertedData);
     } on PostgrestException catch (e) {
       if (kDebugMode) {
