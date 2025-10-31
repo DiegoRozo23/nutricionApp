@@ -186,7 +186,20 @@ Response vuelve en el mismo orden
 
 ## 📚 Documentación
 
-Ver el archivo `../requerimientos.md` para la documentación completa de requerimientos funcionales y no funcionales.
+### Archivos de Configuración
+
+- **`SETUP_SUPABASE.md`**: Guía completa para configurar Supabase paso a paso
+- **`SCHEMA_COMPLETO.sql`**: SQL consolidado para crear toda la base de datos
+- **`requerimientos.md`**: Documentación completa de requerimientos funcionales y no funcionales
+- **`env.example`**: Ejemplo de archivo .env (crea tu propio .env con tus credenciales)
+
+### Configuración Inicial
+
+1. Lee `SETUP_SUPABASE.md` para configurar tu proyecto de Supabase
+2. Ejecuta el SQL de `SCHEMA_COMPLETO.sql` en el SQL Editor de Supabase
+3. Copia `env.example` a `.env` y agrega tus credenciales de Supabase
+4. Ejecuta `flutter pub get` para instalar dependencias
+5. Ejecuta `flutter run` para iniciar la app
 
 ## 🔧 Tecnologías
 
@@ -204,12 +217,10 @@ Ver el archivo `../requerimientos.md` para la documentación completa de requeri
 - [x] Paneles de nutricionista y paciente
 - [x] Navegación entre pantallas
 - [x] Validación de formularios
-
-### 🚧 En Desarrollo
-- [ ] Integración con Supabase
-- [ ] Gestión de pacientes (CRUD)
-- [ ] Generación de planes nutricionales
-- [ ] Chat en tiempo real
+- [x] Integración con Supabase (configurado)
+- [x] Esquema de base de datos completo
+- [x] Políticas RLS implementadas
+- [x] Dependencias de chat instaladas
 
 ### 📅 Próximamente
 - [ ] Descarga de PDF
