@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../../../shared/utils/constants.dart';
 import '../../../../shared/services/storage_service.dart';
 import '../../../../shared/services/secure_storage_service.dart';
+import '../../../../shared/services/chat_notification_service.dart';
+import '../../../../shared/services/supabase_service.dart';
+import '../../../../shared/services/fcm_service.dart';
 import 'nutricionista_panel.dart';
 import 'paciente_panel.dart';
 import '../../domain/usecases/login_usecase.dart';
@@ -115,6 +119,38 @@ class _CredencialesScreenState extends State<CredencialesScreen> {
         }
 
         if (!mounted) return;
+
+        // Inicializar servicio de notificaciones después del login
+        try {
+          await chatNotificationService.reinit();
+        } catch (e) {
+          // Ignorar error, el servicio se inicializará automáticamente
+        }
+
+        // Registrar token FCM para notificaciones push cuando la app está cerrada
+        // Esto solicitará permisos de notificaciones si aún no se han otorgado
+        try {
+          final userId = supabaseService.client.auth.currentUser?.id;
+          if (userId != null) {
+            final permissionsGranted = await fcmService.registerUserToken(userId);
+            if (!permissionsGranted && mounted) {
+              // Si el usuario denegó permisos, mostrar mensaje informativo
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text(
+                    'Las notificaciones fueron denegadas. Puedes activarlas en la configuración del dispositivo.',
+                  ),
+                  duration: Duration(seconds: 4),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          // Ignorar error, no es crítico para el login
+          if (kDebugMode) {
+            print('[LOGIN] Error al registrar token FCM: $e');
+          }
+        }
 
         // Login exitoso
         if (widget.role == 'nutricionista') {

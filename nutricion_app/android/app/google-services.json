@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "569870445107",
+    "project_id": "nutricionapp-2d54d",
+    "storage_bucket": "nutricionapp-2d54d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:569870445107:android:26a44e368b81a0db3b5146",
+        "android_client_info": {
+          "package_name": "com.example.nutricion_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgX7fwZSoD5xfR8ZaLoy1a6E1efzyp3G8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

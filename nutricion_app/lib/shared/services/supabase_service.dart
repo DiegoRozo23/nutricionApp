@@ -23,23 +23,47 @@ class SupabaseService {
     
     try {
       // Cargar variables de entorno
+      String url = '';
+      String anonKey = '';
+      
       try {
+        // Intentar cargar .env desde el root del proyecto
         await dotenv.load(fileName: ".env");
+        url = dotenv.env['SUPABASE_URL'] ?? '';
+        anonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
       } catch (e) {
-        if (kDebugMode) {
-          print('⚠️ No se encontró archivo .env');
-          print('📝 Copia env.example a .env y configura tus credenciales');
+        // Si falla, intentar desde assets (build de release)
+        try {
+          await dotenv.load(fileName: "assets/.env");
+          url = dotenv.env['SUPABASE_URL'] ?? '';
+          anonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+        } catch (e2) {
+          // Si también falla, intentar sin "assets/" (algunos builds)
+          try {
+            await dotenv.load();
+            url = dotenv.env['SUPABASE_URL'] ?? '';
+            anonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+          } catch (e3) {
+            final errorMsg = 'No se pudo cargar archivo .env. Errores: $e, $e2, $e3';
+            if (kDebugMode) {
+              print('⚠️ $errorMsg');
+              print('📝 Asegúrate de que el archivo .env existe y está en pubspec.yaml');
+            } else {
+              // En release, lanzar excepción para que el usuario sepa qué pasó
+              throw Exception('Error de configuración: $errorMsg');
+            }
+            return;
+          }
         }
-        return;
       }
       
-      final String url = dotenv.env['SUPABASE_URL'] ?? '';
-      final String anonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
-      
       if (url.isEmpty || anonKey.isEmpty) {
+        final errorMsg = '⚠️ AVISO: SUPABASE_URL o SUPABASE_ANON_KEY no están configurados';
         if (kDebugMode) {
-          print('⚠️ AVISO: SUPABASE_URL o SUPABASE_ANON_KEY no están configurados en .env');
+          print(errorMsg);
           print('📝 Edita el archivo .env con tus credenciales de Supabase');
+        } else {
+          throw Exception('$errorMsg. Verifica la configuración.');
         }
         return;
       }

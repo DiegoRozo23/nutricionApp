@@ -1,13 +1,18 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../domain/usecases/logout_usecase.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../../../shared/services/storage_service.dart';
+import '../../../../shared/services/supabase_service.dart';
+import '../../../../shared/services/chat_notification_service.dart';
+import '../../../../shared/services/fcm_service.dart';
 import '../../../pacientes/presentation/screens/lista_pacientes_screen.dart';
 import '../../../pacientes/presentation/screens/crear_paciente_screen.dart';
 import '../../../pacientes/domain/usecases/obtener_pacientes_usecase.dart';
 import '../../../pacientes/data/repositories/pacientes_repository_impl.dart';
 import '../../../pacientes/domain/repositories/pacientes_repository.dart';
 import '../../../pacientes/domain/entities/paciente.dart';
+import '../../../chat/presentation/screens/nutricionista_chats_screen.dart';
 import 'role_selection_screen.dart';
 
 class NutricionistaPanel extends StatefulWidget {
@@ -71,7 +76,20 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
     if (confirm != true || !mounted) return;
 
     try {
+      // Limpiar token FCM antes de cerrar sesión
+      try {
+        await fcmService.unregisterUserToken();
+      } catch (fcmError) {
+        if (kDebugMode) {
+          print('Error al limpiar token FCM: $fcmError');
+        }
+        // Continuar con el logout aunque falle
+      }
+      
       await _logoutUseCase();
+      
+      // Desactivar servicio de notificaciones
+      chatNotificationService.dispose();
       
       if (!mounted) return;
       
@@ -231,6 +249,24 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                   },
                 ),
                 const SizedBox(height: 12),
+
+                _ActionCard(
+                  title: 'Chats',
+                  subtitle: 'Mensajes con pacientes',
+                  icon: Icons.chat_bubble_outline,
+                  color: const Color(0xFF9C27B0),
+                  badgeStream: chatNotificationService.unreadCountStream,
+                  initialBadgeCount: chatNotificationService.unreadCount,
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const NutricionistaChatsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 12),
+
                 _ActionCard(
                   title: 'Generar Plan',
                   subtitle: 'Crear plan nutricional',
@@ -239,18 +275,6 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Generar plan (Próximamente)')),
-                    );
-                  },
-                ),
-                const SizedBox(height: 12),
-                _ActionCard(
-                  title: 'Chats',
-                  subtitle: 'Mensajes con pacientes',
-                  icon: Icons.chat_bubble_outline,
-                  color: const Color(0xFF9C27B0),
-                  onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chats (Próximamente)')),
                     );
                   },
                 ),
@@ -344,6 +368,9 @@ class _ActionCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final VoidCallback onTap;
+  final int? badgeCount;
+  final Stream<int>? badgeStream;
+  final int initialBadgeCount;
 
   const _ActionCard({
     required this.title,
@@ -351,6 +378,9 @@ class _ActionCard extends StatelessWidget {
     required this.icon,
     required this.color,
     required this.onTap,
+    this.badgeCount,
+    this.badgeStream,
+    this.initialBadgeCount = 0,
   });
 
   @override
@@ -373,17 +403,86 @@ class _ActionCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 32,
-              ),
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    icon,
+                    color: color,
+                    size: 32,
+                  ),
+                ),
+                // Badge estático o dinámico
+                badgeStream != null
+                    ? StreamBuilder<int>(
+                        stream: badgeStream,
+                        initialData: initialBadgeCount,
+                        builder: (context, snapshot) {
+                          // Usar la misma lógica que el badge verde: snapshot.data ?? initialData
+                          final count = snapshot.data ?? initialBadgeCount;
+                          // Solo mostrar si hay mensajes sin leer (igual que el badge verde)
+                          if (count <= 0) return const SizedBox.shrink();
+                          return Positioned(
+                            right: -8,
+                            top: -8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 20,
+                                minHeight: 20,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  count > 99 ? '99+' : count.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      )
+                    : (badgeCount != null && badgeCount! > 0)
+                        ? Positioned(
+                            right: -8,
+                            top: -8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: const BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 20,
+                                minHeight: 20,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  badgeCount! > 99 ? '99+' : badgeCount.toString(),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+              ],
             ),
             const SizedBox(width: 16),
             Expanded(

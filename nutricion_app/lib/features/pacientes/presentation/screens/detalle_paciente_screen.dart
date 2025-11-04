@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../../domain/entities/paciente.dart';
 import '../../domain/repositories/pacientes_repository.dart';
 import '../../domain/usecases/obtener_paciente_por_id_usecase.dart';
 import '../../data/repositories/pacientes_repository_impl.dart';
+import '../../../chat/presentation/screens/chat_screen.dart';
+import '../../../../shared/services/chat_service.dart';
 import 'editar_paciente_screen.dart';
 
 /// Pantalla que muestra los detalles de un paciente
@@ -76,6 +79,59 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
     }
   }
 
+  Future<void> _abrirChatConPaciente() async {
+    if (_paciente.authUid == null || _paciente.authUid!.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('El paciente no tiene cuenta de usuario asociada'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Mostrar loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+
+      // Crear o obtener el room de chat
+      if (kDebugMode) {
+        print('[DETALLE_PACIENTE] Iniciando chat con paciente: ${_paciente.authUid}');
+      }
+      
+      final room = await chatService.createOrGetDirectRoom(_paciente.authUid!);
+      
+      if (kDebugMode) {
+        print('[DETALLE_PACIENTE] ✅ Room obtenido/creado: ${room.id}');
+      }
+
+      if (!mounted) return;
+      Navigator.pop(context); // Cerrar loading
+
+      // Navegar a la pantalla de chat
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChatScreen(room: room),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // Cerrar loading si está abierto
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al abrir chat: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   void _navegarAEditar() async {
     final resultado = await Navigator.of(context).push(
       MaterialPageRoute(
@@ -98,6 +154,11 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
         backgroundColor: const Color(0xFF4CAF50),
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chat),
+            onPressed: _abrirChatConPaciente,
+            tooltip: 'Chat',
+          ),
           IconButton(
             icon: const Icon(Icons.edit),
             onPressed: _navegarAEditar,
@@ -171,6 +232,32 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
                             ],
                           ),
                         ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Botón para iniciar chat
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: _abrirChatConPaciente,
+                      icon: const Icon(Icons.chat, size: 24),
+                      label: const Text(
+                        'Iniciar Chat',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4CAF50),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
                       ),
                     ),
                   ),

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../shared/services/supabase_service.dart';
+import '../../../../shared/services/chat_notification_service.dart';
+import '../../../../shared/services/chat_service.dart';
 import 'role_selection_screen.dart';
 import 'nutricionista_panel.dart';
 import 'paciente_panel.dart';
@@ -48,6 +50,15 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (result is AuthSuccess) {
+      // Inicializar servicio de notificaciones si hay sesión activa
+      try {
+        await chatNotificationService.reinit();
+        // Actualizar estado online del usuario al abrir la app
+        await chatService.updateUserOnlineStatus(true);
+      } catch (e) {
+        // Ignorar error, el servicio se inicializará más tarde
+      }
+      
       // Hay sesión activa, navegar al panel correspondiente
       if (result.isNutricionista) {
         Navigator.of(context).pushReplacement(

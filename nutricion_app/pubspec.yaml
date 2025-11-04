@@ -45,10 +45,16 @@ dependencies:
   # Env para variables de entorno
   flutter_dotenv: ^5.1.0
   
-  # Chat Core para Supabase
-  flutter_supabase_chat_core: ^1.6.0
-  flutter_chat_types: ^3.6.2
-  flutter_chat_ui: ^1.6.0
+  # Chat Core y UI (versión nueva)
+  flutter_chat_core: ^2.0.0
+  flutter_chat_ui: ^2.9.1
+  
+  # Notificaciones locales (sin servicio externo)
+  flutter_local_notifications: ^18.0.1
+  
+  # Firebase para notificaciones push (funciona con app cerrada)
+  firebase_core: ^3.8.1
+  firebase_messaging: ^15.1.5
 
 dev_dependencies:
   flutter_test:
