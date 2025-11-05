@@ -27,6 +27,23 @@ Para comenzar rápidamente con el proyecto, consulta las [**Instrucciones de Ins
 - Variables de entorno
 - Ejecución de la aplicación
 
+### 📦 Generar APK
+
+Para generar el APK de la aplicación:
+
+```bash
+# APK universal (todas las arquitecturas)
+flutter build apk --release
+
+# APKs separados por arquitectura (más pequeños)
+flutter build apk --release --split-per-abi
+
+# App Bundle para Google Play Store
+flutter build appbundle --release
+```
+
+El APK se generará en: `build/app/outputs/flutter-apk/app-release.apk`
+
 ---
 
 ## 📚 Documentación
