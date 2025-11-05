@@ -182,7 +182,6 @@ Sistema de mensajería instantánea con:
 - Notificaciones push via Firebase Cloud Messaging
 - Estado de lectura en tiempo real (✓/✓✓)
 - Estado online/offline de usuarios
-- Indicador de escritura
 
 **Nota**: Consulta la [Documentación General](./Documentacion.md) para más detalles sobre el sistema de chat.
 
@@ -237,33 +236,7 @@ Seguridad implementada mediante **Row Level Security (RLS)** optimizado para per
 - Notificaciones push con FCM
 - Estado de lectura en tiempo real
 - Estado online/offline
-- Indicador de escritura
 - Edge Function para notificaciones
 - Seguridad RLS optimizada
 - UI intuitiva y minimalista
 
-### 🚧 En Desarrollo
-- Generación de planes nutricionales
-- Exportación de datos a PDF
-
----
-
-## 🤝 Contribución
-
-Este es un proyecto personal. Para contribuciones, por favor abre un issue en el repositorio.
-
----
-
-## 📄 Licencia
-
-Este proyecto es privado. Todos los derechos reservados.
-
----
-
-## 👨‍💻 Autor
-
-Desarrollado por Diego Rozo
-
----
-
-**Última actualización**: 2024
