@@ -12,6 +12,7 @@ import '../../../chat/presentation/screens/chat_screen.dart';
 import '../../domain/entities/nutricionista.dart';
 import '../../domain/entities/paciente.dart';
 import 'role_selection_screen.dart';
+import 'perfil_paciente_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PacientePanel extends StatefulWidget {
@@ -847,6 +848,39 @@ class _PacientePanelState extends State<PacientePanel> {
                     ),
 
                   if (_nutricionista != null) const SizedBox(height: 16),
+
+                  // Botón Ver Mi Perfil (PRIMERO)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const PerfilPacienteScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.person, size: 24),
+                      label: const Text(
+                        'Ver Mi Perfil',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF9C27B0),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
                   // Botón Ver Plan Nutricional (DESPUÉS)
                   SizedBox(

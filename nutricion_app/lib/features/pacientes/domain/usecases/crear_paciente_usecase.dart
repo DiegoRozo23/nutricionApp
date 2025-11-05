@@ -31,6 +31,13 @@ class CrearPacienteUseCase {
       );
     }
 
+    if (dni.length < 8) {
+      return PacientesFailure(
+        message: 'El DNI debe tener al menos 8 caracteres',
+        code: 'invalid_dni_length',
+      );
+    }
+
     if (password.isEmpty) {
       return PacientesFailure(
         message: 'La contraseña inicial es obligatoria',

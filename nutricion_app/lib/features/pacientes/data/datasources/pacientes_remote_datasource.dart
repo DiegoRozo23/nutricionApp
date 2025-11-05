@@ -140,6 +140,11 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         throw PacientesException('El DNI es obligatorio para crear un paciente');
       }
 
+      // Validar longitud mínima del DNI (8 caracteres)
+      if (paciente.dni!.length < 8) {
+        throw PacientesException('El DNI debe tener al menos 8 caracteres');
+      }
+
       // Obtener el nutricionista actual
       final user = supabase.auth.currentUser;
       if (user == null) {
@@ -292,6 +297,7 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         'nombre': paciente.nombre,
         'apellidos': paciente.apellidos,
         'dni': paciente.dni,
+        'password_visible': password, // Almacenar contraseña para que el paciente pueda verla
         if (paciente.sexo != null) 'sexo': paciente.sexo,
         if (paciente.edad != null) 'edad': paciente.edad,
         if (paciente.peso != null) 'peso': paciente.peso,

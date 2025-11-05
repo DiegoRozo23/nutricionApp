@@ -401,6 +401,24 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
                 hintText: widget.isEditing ? null : 'Obligatorio para crear cuenta',
               ),
               keyboardType: TextInputType.number,
+              validator: (value) {
+                // Al crear, validar que el DNI tenga al menos 8 caracteres
+                if (!widget.isEditing) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'El DNI es obligatorio';
+                  }
+                  if (value.trim().length < 8) {
+                    return 'El DNI debe tener al menos 8 caracteres';
+                  }
+                }
+                // Al editar, el DNI puede ser opcional pero si se proporciona debe tener al menos 8 caracteres
+                if (widget.isEditing && value != null && value.trim().isNotEmpty) {
+                  if (value.trim().length < 8) {
+                    return 'El DNI debe tener al menos 8 caracteres';
+                  }
+                }
+                return null;
+              },
             ),
             const SizedBox(height: 16),
 

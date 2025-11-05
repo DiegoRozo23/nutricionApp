@@ -27,16 +27,8 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
 
   Future<void> _crearPaciente({
     required String dni,
-    required String password,
-    String? nombre,
-    String? apellidos,
-    String? sexo,
-    int? edad,
-    double? peso,
-    double? talla,
-    double? imc,
-    String? historialMedico,
-    String? observaciones,
+    required String nombre,
+    required String apellidos,
   }) async {
     if (_isLoading) return;
 
@@ -44,11 +36,14 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
       _isLoading = true;
     });
 
+    // Generar contraseña automáticamente: DNI + primera letra nombre + primera letra apellido
+    final passwordGenerada = _generarPassword(dni, nombre, apellidos);
+
     final result = await _crearPacienteUseCase(
       dni: dni,
-      password: password, // Contraseña inicial
-      nombre: nombre ?? '',
-      apellidos: apellidos ?? '',
+      password: passwordGenerada, // Contraseña generada automáticamente
+      nombre: nombre,
+      apellidos: apellidos,
     );
 
     if (!mounted) return;
@@ -110,6 +105,13 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
     }
   }
 
+  /// Genera la contraseña automáticamente: DNI + primera letra nombre + primera letra apellido
+  String _generarPassword(String dni, String nombre, String apellidos) {
+    final primeraLetraNombre = nombre.isNotEmpty ? nombre[0].toUpperCase() : '';
+    final primeraLetraApellido = apellidos.isNotEmpty ? apellidos[0].toUpperCase() : '';
+    return '$dni$primeraLetraNombre$primeraLetraApellido';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,11 +132,13 @@ class _CrearPacienteScreenState extends State<CrearPacienteScreen> {
   }
 }
 
-/// Formulario simple que solo pide DNI y contraseña
+/// Formulario simple que solo pide Nombre, Apellidos y DNI
+/// La contraseña se genera automáticamente
 class _FormularioSimplePaciente extends StatefulWidget {
   final Function({
     required String dni,
-    required String password,
+    required String nombre,
+    required String apellidos,
   }) onSubmit;
 
   const _FormularioSimplePaciente({
@@ -147,30 +151,57 @@ class _FormularioSimplePaciente extends StatefulWidget {
 
 class _FormularioSimplePacienteState extends State<_FormularioSimplePaciente> {
   final _formKey = GlobalKey<FormState>();
+  final _nombreController = TextEditingController();
+  final _apellidosController = TextEditingController();
   final _dniController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
   @override
   void dispose() {
+    _nombreController.dispose();
+    _apellidosController.dispose();
     _dniController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  void _generarPassword() {
+    final dni = _dniController.text.trim();
+    final nombre = _nombreController.text.trim();
+    final apellidos = _apellidosController.text.trim();
+    
+    setState(() {
+      if (dni.isNotEmpty && nombre.isNotEmpty && apellidos.isNotEmpty) {
+        final primeraLetraNombre = nombre[0].toUpperCase();
+        final primeraLetraApellido = apellidos[0].toUpperCase();
+        final passwordGenerada = '$dni$primeraLetraNombre$primeraLetraApellido';
+        _passwordController.text = passwordGenerada;
+      } else {
+        _passwordController.clear();
+      }
+    });
   }
 
   void _handleSubmit() {
     if (_formKey.currentState!.validate()) {
       widget.onSubmit(
         dni: _dniController.text.trim(),
-        password: _passwordController.text,
+        nombre: _nombreController.text.trim(),
+        apellidos: _apellidosController.text.trim(),
       );
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
+    return SingleChildScrollView(
+      padding: EdgeInsets.only(
+        left: 16.0,
+        right: 16.0,
+        top: 16.0,
+        bottom: MediaQuery.of(context).padding.bottom + 16.0,
+      ),
       child: Form(
         key: _formKey,
         child: Column(
@@ -178,13 +209,59 @@ class _FormularioSimplePacienteState extends State<_FormularioSimplePaciente> {
           children: [
             const SizedBox(height: 20),
             Text(
-              'Crear cuenta de paciente',
+              'Crear nuevo paciente',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 32),
+            // Campo Nombre
+            TextFormField(
+              controller: _nombreController,
+              decoration: const InputDecoration(
+                labelText: 'Nombre *',
+                hintText: 'Ej: Juan',
+                prefixIcon: Icon(Icons.person),
+                border: OutlineInputBorder(),
+              ),
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
+              onChanged: (_) => _generarPassword(),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'El nombre es obligatorio';
+                }
+                if (value.trim().length < 2) {
+                  return 'El nombre debe tener al menos 2 caracteres';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            // Campo Apellidos
+            TextFormField(
+              controller: _apellidosController,
+              decoration: const InputDecoration(
+                labelText: 'Apellidos *',
+                hintText: 'Ej: Pérez',
+                prefixIcon: Icon(Icons.person_outline),
+                border: OutlineInputBorder(),
+              ),
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.next,
+              onChanged: (_) => _generarPassword(),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Los apellidos son obligatorios';
+                }
+                if (value.trim().length < 2) {
+                  return 'Los apellidos deben tener al menos 2 caracteres';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
             // Campo DNI
             TextFormField(
               controller: _dniController,
@@ -196,49 +273,70 @@ class _FormularioSimplePacienteState extends State<_FormularioSimplePaciente> {
               ),
               keyboardType: TextInputType.number,
               textInputAction: TextInputAction.next,
+              onChanged: (_) => _generarPassword(),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'El DNI es obligatorio';
                 }
-                if (value.trim().length < 5) {
-                  return 'El DNI debe tener al menos 5 caracteres';
+                if (value.trim().length < 8) {
+                  return 'El DNI debe tener al menos 8 caracteres';
                 }
                 return null;
               },
             ),
             const SizedBox(height: 16),
-            // Campo Contraseña
+            // Campo Contraseña (solo lectura, generada automáticamente)
             TextFormField(
               controller: _passwordController,
+              readOnly: true,
               decoration: InputDecoration(
-                labelText: 'Contraseña inicial *',
-                hintText: 'Mínimo 6 caracteres',
+                labelText: 'Contraseña (generada automáticamente)',
+                hintText: 'Se generará al completar los campos',
                 prefixIcon: const Icon(Icons.lock),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _obscurePassword ? Icons.visibility : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _obscurePassword = !_obscurePassword;
-                    });
-                  },
-                ),
+                suffixIcon: _passwordController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(
+                          _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscurePassword = !_obscurePassword;
+                          });
+                        },
+                      )
+                    : null,
                 border: const OutlineInputBorder(),
+                filled: true,
+                fillColor: Colors.grey.shade100,
               ),
-              obscureText: _obscurePassword,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _handleSubmit(),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'La contraseña es obligatoria';
-                }
-                if (value.length < 6) {
-                  return 'La contraseña debe tener al menos 6 caracteres';
-                }
-                return null;
-              },
+              obscureText: _passwordController.text.isNotEmpty && _obscurePassword,
             ),
+            if (_passwordController.text.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.blue.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.blue.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'La contraseña se genera automáticamente: DNI + primera letra del nombre + primera letra del apellido',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue.shade700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 32),
             // Botón crear
             ElevatedButton(
