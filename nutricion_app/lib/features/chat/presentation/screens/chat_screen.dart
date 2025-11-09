@@ -941,6 +941,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Row(
           children: [
@@ -1046,6 +1047,17 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                       return Composer(
                         hintText: 'Escribe tu mensaje',
                         backgroundColor: Colors.white,
+                      );
+                    },
+                    emptyChatListBuilder: (context) {
+                      return EmptyChatList(
+                        text: 'No hay mensajes aún',
+                        textStyle: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey[600],
+                        ),
+                        padding: const EdgeInsets.only(bottom: 120),
                       );
                     },
                     textMessageBuilder: (context, textMessage, messageWidth, {groupStatus, isSentByMe = false}) {

@@ -1,5 +1,93 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+/// Formateador personalizado para limitar a máximo 2 decimales
+/// Agrega automáticamente un punto después del primer dígito
+class DecimalTextInputFormatter extends TextInputFormatter {
+  final int maxDecimalPlaces;
+
+  DecimalTextInputFormatter({this.maxDecimalPlaces = 2});
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final newText = newValue.text;
+
+    // Si el nuevo valor está vacío, permitirlo
+    if (newText.isEmpty) {
+      return newValue;
+    }
+
+    // Permitir solo números y un punto decimal
+    // Filtrar caracteres no válidos (solo números y punto)
+    String filteredText = newText.replaceAll(RegExp(r'[^\d.]'), '');
+    
+    // Verificar que no haya más de un punto decimal
+    final dotCount = filteredText.split('.').length - 1;
+    if (dotCount > 1) {
+      // Si hay más de un punto, mantener el valor anterior
+      return oldValue;
+    }
+
+    // Detectar si el usuario acaba de escribir el primer dígito (campo estaba vacío)
+    bool campoEstabaVacio = oldValue.text.isEmpty;
+    bool hayDigitosSinPunto = filteredText.isNotEmpty && 
+                               !filteredText.contains('.') &&
+                               RegExp(r'^\d+$').hasMatch(filteredText);
+    
+    // Si el campo estaba vacío y el usuario escribió dígitos sin punto, agregar punto después del primer dígito
+    if (campoEstabaVacio && hayDigitosSinPunto && filteredText.length >= 1) {
+      // Si hay más de un dígito, insertar el punto después del primero
+      // Ejemplo: "17" -> "1.7", "1" -> "1."
+      if (filteredText.length > 1) {
+        filteredText = '${filteredText[0]}.${filteredText.substring(1)}';
+      } else {
+        filteredText = filteredText + '.';
+      }
+      // Colocar el cursor después del punto
+      int cursorPos = filteredText.indexOf('.') + 1;
+      return TextEditingValue(
+        text: filteredText,
+        selection: TextSelection.collapsed(offset: cursorPos),
+      );
+    }
+
+    // Si hay un punto, verificar que después del punto no haya más de maxDecimalPlaces dígitos
+    if (filteredText.contains('.')) {
+      final parts = filteredText.split('.');
+      if (parts.length > 1) {
+        // Si intenta escribir más de maxDecimalPlaces decimales, NO PERMITIRLO
+        if (parts[1].length > maxDecimalPlaces) {
+          return oldValue; // Rechazar completamente la entrada
+        }
+      }
+    }
+
+    // Si se filtraron caracteres, actualizar el texto
+    if (filteredText != newText) {
+      // Calcular cuántos caracteres válidos hay antes de la posición del cursor original
+      int validCharsBeforeCursor = 0;
+      int cursorPos = newValue.selection.baseOffset;
+      for (int i = 0; i < newText.length && i < cursorPos; i++) {
+        if (RegExp(r'[\d.]').hasMatch(newText[i])) {
+          validCharsBeforeCursor++;
+        }
+      }
+      // Ajustar la posición del cursor al texto filtrado
+      int newCursorPos = validCharsBeforeCursor.clamp(0, filteredText.length);
+      
+      return TextEditingValue(
+        text: filteredText,
+        selection: TextSelection.collapsed(offset: newCursorPos),
+      );
+    }
+
+    return newValue;
+  }
+}
 
 /// Clase auxiliar para representar una medida antropométrica
 class _MedidaAntropometrica {
@@ -516,6 +604,9 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
                     ),
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     textInputAction: TextInputAction.next,
+                    inputFormatters: [
+                      DecimalTextInputFormatter(maxDecimalPlaces: 2),
+                    ],
                     onChanged: (_) => _calcularIMCConDebounce(),
                   ),
                 ),

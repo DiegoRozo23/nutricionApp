@@ -253,4 +253,3 @@ class _RoleButton extends StatelessWidget {
     );
   }
 }
-
