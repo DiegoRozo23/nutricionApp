@@ -302,6 +302,10 @@ class _PerfilPacienteScreenState extends State<PerfilPacienteScreen> {
                                       ? _paciente!.imc!.toStringAsFixed(2)
                                       : 'No calculado',
                                 ),
+                                _InfoRow(
+                                  label: 'Actividad Física',
+                                  value: _paciente!.actividadFisica ?? 'No especificada',
+                                ),
                               ],
                             ),
                           ),

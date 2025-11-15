@@ -305,6 +305,7 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         if (paciente.imc != null) 'imc': paciente.imc,
         if (paciente.medidasAntropometricas != null)
           'medidas_antropometricas': paciente.medidasAntropometricas,
+        if (paciente.actividadFisica != null) 'actividadFisica': paciente.actividadFisica,
         if (paciente.historialMedico != null)
           'historial_medico': paciente.historialMedico,
         if (paciente.observaciones != null) 'observaciones': paciente.observaciones,
@@ -381,6 +382,7 @@ class PacientesRemoteDataSourceImpl implements PacientesRemoteDataSource {
         if (paciente.imc != null) 'imc': paciente.imc,
         if (paciente.medidasAntropometricas != null)
           'medidas_antropometricas': paciente.medidasAntropometricas,
+        if (paciente.actividadFisica != null) 'actividadFisica': paciente.actividadFisica,
         if (paciente.historialMedico != null)
           'historial_medico': paciente.historialMedico,
         if (paciente.observaciones != null) 'observaciones': paciente.observaciones,

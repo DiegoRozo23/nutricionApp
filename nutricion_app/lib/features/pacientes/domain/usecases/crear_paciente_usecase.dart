@@ -20,6 +20,7 @@ class CrearPacienteUseCase {
     double? talla,
     double? imc,
     Map<String, dynamic>? medidasAntropometricas,
+    String? actividadFisica,
     String? historialMedico,
     String? observaciones,
   }) async {
@@ -64,6 +65,7 @@ class CrearPacienteUseCase {
       talla: talla,
       imc: imc,
       medidasAntropometricas: medidasAntropometricas,
+      actividadFisica: actividadFisica,
       historialMedico: historialMedico,
       observaciones: observaciones,
       createdAt: DateTime.now(),

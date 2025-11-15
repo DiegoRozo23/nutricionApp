@@ -13,6 +13,7 @@ class Paciente {
   final double? talla;
   final double? imc;
   final Map<String, dynamic>? medidasAntropometricas;
+  final String? actividadFisica;
   final String? historialMedico;
   final String? observaciones;
   final bool activo;
@@ -32,6 +33,7 @@ class Paciente {
     this.talla,
     this.imc,
     this.medidasAntropometricas,
+    this.actividadFisica,
     this.historialMedico,
     this.observaciones,
     this.activo = true,

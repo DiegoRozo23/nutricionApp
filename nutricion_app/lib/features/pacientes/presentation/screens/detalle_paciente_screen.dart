@@ -7,6 +7,9 @@ import '../../data/repositories/pacientes_repository_impl.dart';
 import '../../../chat/presentation/screens/chat_screen.dart';
 import '../../../../shared/services/chat_service.dart';
 import 'editar_paciente_screen.dart';
+import 'plan_nutricional_screen.dart';
+import 'seleccionar_plantilla_screen.dart';
+import 'lista_planes_paciente_screen.dart';
 
 /// Pantalla que muestra los detalles de un paciente
 class DetallePacienteScreen extends StatefulWidget {
@@ -263,6 +266,81 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Botón Generar Plan Nutricional
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SeleccionarPlantillaScreen(
+                              paciente: _paciente,
+                            ),
+                          ),
+                        ).then((result) {
+                          // Si se generó el plan, recargar datos
+                          if (result == true) {
+                            _cargarPaciente();
+                          }
+                        });
+                      },
+                      icon: const Icon(Icons.add_circle_outline, size: 24),
+                      label: const Text(
+                        'Generar Plan Nutricional',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF9800),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Botón Ver Plan Nutricional
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => ListaPlanesPacienteScreen(
+                              paciente: _paciente,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.restaurant_menu, size: 24),
+                      label: const Text(
+                        'Ver Planes Nutricionales',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2196F3),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
                   // Información personal
                   const Text(
                     'Información Personal',
@@ -302,6 +380,10 @@ class _DetallePacienteScreenState extends State<DetallePacienteScreen> {
                             value: _paciente.imc != null
                                 ? _paciente.imc!.toStringAsFixed(2)
                                 : 'No calculado',
+                          ),
+                          _InfoRow(
+                            label: 'Actividad Física',
+                            value: _paciente.actividadFisica ?? 'No especificada',
                           ),
                         ],
                       ),

@@ -149,7 +149,7 @@ class _MedidaCardState extends State<_MedidaCard> with AutomaticKeepAliveClientM
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Medida',
-                        hintText: 'Ej: Perímetro Cintura, Pliegue Tríceps',
+                        hintText: 'Ej: Cintura, Pliegue Tríceps',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.label),
                       ),
@@ -194,6 +194,7 @@ class FormularioPaciente extends StatefulWidget {
   final double? tallaInicial;
   final double? imcInicial;
   final Map<String, dynamic>? medidasAntropometricasInicial;
+  final String? actividadFisicaInicial;
   final String? historialMedicoInicial;
   final String? observacionesInicial;
   final bool isEditing;
@@ -208,6 +209,7 @@ class FormularioPaciente extends StatefulWidget {
     double? talla,
     double? imc,
     Map<String, dynamic>? medidasAntropometricas,
+    String? actividadFisica,
     String? historialMedico,
     String? observaciones,
   }) onSubmit;
@@ -223,6 +225,7 @@ class FormularioPaciente extends StatefulWidget {
     this.tallaInicial,
     this.imcInicial,
     this.medidasAntropometricasInicial,
+    this.actividadFisicaInicial,
     this.historialMedicoInicial,
     this.observacionesInicial,
     this.isEditing = false,
@@ -251,6 +254,7 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
   final List<_MedidaAntropometrica> _medidasAntropometricas = [];
   
   String? _sexoSeleccionado;
+  String? _actividadFisicaSeleccionada;
   bool _obscurePassword = true;
   bool _expandedMedidas = false;
   Timer? _debounceTimer;
@@ -281,6 +285,7 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
     );
     _passwordController = TextEditingController(); // Solo para crear
     _sexoSeleccionado = widget.sexoInicial;
+    _actividadFisicaSeleccionada = widget.actividadFisicaInicial;
     
     // Inicializar medidas antropométricas desde el Map
     final medidasInicial = widget.medidasAntropometricasInicial ?? {};
@@ -414,6 +419,7 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
       talla: double.tryParse(_tallaController.text.trim()),
       imc: double.tryParse(_imcController.text.trim()),
       medidasAntropometricas: medidasAntropometricas,
+      actividadFisica: _actividadFisicaSeleccionada,
       historialMedico: _historialMedicoController.text.trim().isEmpty
           ? null
           : _historialMedicoController.text.trim(),
@@ -627,6 +633,27 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
             ),
             const SizedBox(height: 16),
 
+            // Actividad Física
+            DropdownButtonFormField<String>(
+              value: _actividadFisicaSeleccionada,
+              decoration: const InputDecoration(
+                labelText: 'Nivel de Actividad Física',
+                prefixIcon: Icon(Icons.fitness_center),
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'Baja', child: Text('Baja')),
+                DropdownMenuItem(value: 'Moderada', child: Text('Moderada')),
+                DropdownMenuItem(value: 'Alta', child: Text('Alta')),
+              ],
+              onChanged: (value) {
+                setState(() {
+                  _actividadFisicaSeleccionada = value;
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+
             // Medidas Antropométricas (Expandible)
             // Solo renderizar el contenido cuando está expandido para mejor rendimiento
             Card(
@@ -677,7 +704,7 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            'Ejemplo: Escribe "Perímetro Cintura" y el valor "85"',
+                                            'Ejemplo: Escribe "Cintura" y el valor "85"',
                                             style: TextStyle(
                                               fontSize: 13,
                                               color: blue900,

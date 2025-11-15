@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/usecases/logout_usecase.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 import '../../../../shared/services/storage_service.dart';
@@ -8,11 +9,14 @@ import '../../../../shared/services/chat_notification_service.dart';
 import '../../../../shared/services/fcm_service.dart';
 import '../../../pacientes/presentation/screens/lista_pacientes_screen.dart';
 import '../../../pacientes/presentation/screens/crear_paciente_screen.dart';
+import '../../../pacientes/presentation/screens/seleccionar_paciente_plan_screen.dart';
+import '../../../pacientes/presentation/screens/metricas_evaluaciones_screen.dart';
 import '../../../pacientes/domain/usecases/obtener_pacientes_usecase.dart';
 import '../../../pacientes/data/repositories/pacientes_repository_impl.dart';
 import '../../../pacientes/domain/repositories/pacientes_repository.dart';
 import '../../../pacientes/domain/entities/paciente.dart';
 import '../../../chat/presentation/screens/nutricionista_chats_screen.dart';
+import '../../../../shared/services/planes_nutricionales_service.dart';
 import 'role_selection_screen.dart';
 
 class NutricionistaPanel extends StatefulWidget {
@@ -22,34 +26,234 @@ class NutricionistaPanel extends StatefulWidget {
   State<NutricionistaPanel> createState() => _NutricionistaPanelState();
 }
 
-class _NutricionistaPanelState extends State<NutricionistaPanel> {
+class _NutricionistaPanelState extends State<NutricionistaPanel> with WidgetsBindingObserver {
   late final LogoutUseCase _logoutUseCase;
   final PacientesRepository _pacientesRepository = PacientesRepositoryImpl();
+  final PlanesNutricionalesService _planesService = PlanesNutricionalesService();
   int _totalPacientes = 0;
+  int _totalPlanes = 0;
   bool _isLoadingPacientes = true;
+  bool _isLoadingPlanes = true;
+  DateTime? _lastLoadTime;
+  bool _isInitialLoad = true;
 
   @override
   void initState() {
     super.initState();
     _logoutUseCase = LogoutUseCase(AuthRepositoryImpl());
+    WidgetsBinding.instance.addObserver(this);
     _cargarEstadisticas();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Solo recargar después de la carga inicial
+    if (_isInitialLoad) {
+      _isInitialLoad = false;
+      return;
+    }
+    
+    // Recargar estadísticas cada vez que se vuelve a esta pantalla
+    // Usar addPostFrameCallback para asegurar que el contexto esté listo
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      
+      final route = ModalRoute.of(context);
+      if (route != null && route.isCurrent) {
+        final now = DateTime.now();
+        // Solo recargar si ha pasado al menos 50ms desde la última carga
+        // Reducido aún más para que se actualice inmediatamente cuando se vuelve desde otras pantallas
+        if (_lastLoadTime == null || 
+            now.difference(_lastLoadTime!).inMilliseconds >= 50) {
+          if (kDebugMode) {
+            print('[NUTRICIONISTA_PANEL] Recargando estadísticas - Ruta activa detectada en didChangeDependencies');
+          }
+          _cargarEstadisticas();
+        } else {
+          if (kDebugMode) {
+            print('[NUTRICIONISTA_PANEL] Saltando recarga - muy reciente (${now.difference(_lastLoadTime!).inMilliseconds}ms)');
+          }
+        }
+      } else {
+        if (kDebugMode) {
+          print('[NUTRICIONISTA_PANEL] Ruta no está activa - no recargando. Route: ${route?.settings.name}, isCurrent: ${route?.isCurrent}');
+        }
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(NutricionistaPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Recargar cuando el widget se actualiza (por ejemplo, cuando se reemplaza con pushReplacement)
+    if (kDebugMode) {
+      print('[NUTRICIONISTA_PANEL] Widget actualizado - recargando estadísticas');
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _cargarEstadisticas();
+      }
+    });
+  }
+
+  // Método para forzar recarga desde fuera (útil cuando se vuelve desde otras pantallas)
+  void recargarEstadisticas() {
+    if (mounted) {
+      _cargarEstadisticas();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Recargar estadísticas cuando la app vuelve al foreground
+    if (state == AppLifecycleState.resumed && mounted) {
+      _cargarEstadisticas();
+    }
+  }
+
   Future<void> _cargarEstadisticas() async {
-    final useCase = ObtenerPacientesUseCase(_pacientesRepository);
-    final result = await useCase();
+    // Actualizar tiempo de última carga
+    _lastLoadTime = DateTime.now();
+    
+    // Cargar pacientes y planes en paralelo para mejor rendimiento
+    await Future.wait([
+      _cargarPacientes(),
+      _cargarPlanes(),
+    ]);
+  }
 
-    if (!mounted) return;
+  Future<void> _cargarPacientes() async {
+    try {
+      final useCase = ObtenerPacientesUseCase(_pacientesRepository);
+      final result = await useCase();
 
-    if (result is PacientesSuccess<List<Paciente>>) {
-      setState(() {
-        _totalPacientes = result.data.length;
-        _isLoadingPacientes = false;
-      });
-    } else {
-      setState(() {
-        _isLoadingPacientes = false;
-      });
+      if (!mounted) return;
+
+      if (result is PacientesSuccess<List<Paciente>>) {
+        setState(() {
+          _totalPacientes = result.data.length;
+          _isLoadingPacientes = false;
+        });
+      } else {
+        setState(() {
+          _isLoadingPacientes = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('[NUTRICIONISTA_PANEL] Error al cargar pacientes: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoadingPacientes = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _cargarPlanes() async {
+    try {
+      // Resetear estado de carga
+      if (mounted) {
+        setState(() {
+          _isLoadingPlanes = true;
+        });
+      }
+
+      final user = supabaseService.client.auth.currentUser;
+      if (user == null) {
+        if (mounted) {
+          setState(() {
+            _totalPlanes = 0;
+            _isLoadingPlanes = false;
+          });
+        }
+        return;
+      }
+
+      final nutriResponse = await supabaseService.client
+          .from('nutricionistas')
+          .select('id')
+          .eq('auth_uid', user.id)
+          .maybeSingle();
+
+      if (nutriResponse == null) {
+        if (mounted) {
+          setState(() {
+            _totalPlanes = 0;
+            _isLoadingPlanes = false;
+          });
+        }
+        if (kDebugMode) {
+          print('[NUTRICIONISTA_PANEL] No se encontró nutricionista para el usuario: ${user.id}');
+        }
+        return;
+      }
+
+      final nutricionistaId = nutriResponse['id'] as String;
+      
+      if (kDebugMode) {
+        print('[NUTRICIONISTA_PANEL] Cargando planes para nutricionista: $nutricionistaId');
+      }
+      
+      // Obtener todos los planes del nutricionista
+      final planesResponse = await supabaseService.client
+          .from('planes_nutricionales')
+          .select('id')
+          .eq('nutricionista_id', nutricionistaId);
+
+      // Verificar que la respuesta sea una lista
+      int totalPlanes = 0;
+      if (planesResponse != null) {
+        if (planesResponse is List) {
+          totalPlanes = planesResponse.length;
+        } else {
+          // Si no es una lista, intentar convertirla
+          try {
+            final lista = List.from(planesResponse);
+            totalPlanes = lista.length;
+          } catch (e) {
+            if (kDebugMode) {
+              print('[NUTRICIONISTA_PANEL] Error al convertir respuesta a lista: $e');
+            }
+            totalPlanes = 0;
+          }
+        }
+      }
+
+      if (kDebugMode) {
+        print('[NUTRICIONISTA_PANEL] Planes obtenidos: $totalPlanes');
+        print('[NUTRICIONISTA_PANEL] Tipo de respuesta: ${planesResponse.runtimeType}');
+      }
+
+      if (mounted) {
+        setState(() {
+          _totalPlanes = totalPlanes;
+          _isLoadingPlanes = false;
+        });
+        if (kDebugMode) {
+          print('[NUTRICIONISTA_PANEL] Estado actualizado: $_totalPlanes planes');
+        }
+      }
+    } catch (e, stackTrace) {
+      if (kDebugMode) {
+        print('[NUTRICIONISTA_PANEL] Error al cargar planes nutricionales: $e');
+        print('[NUTRICIONISTA_PANEL] Stack trace: $stackTrace');
+      }
+      if (mounted) {
+        setState(() {
+          _totalPlanes = 0;
+          _isLoadingPlanes = false;
+        });
+      }
     }
   }
 
@@ -196,7 +400,7 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                     Expanded(
                       child: _StatCard(
                         title: 'Planes',
-                        value: '0',
+                        value: _isLoadingPlanes ? '-' : '$_totalPlanes',
                         icon: Icons.restaurant_menu,
                         color: const Color(0xFFFF9800),
                       ),
@@ -267,14 +471,43 @@ class _NutricionistaPanelState extends State<NutricionistaPanel> {
                 ),
                 const SizedBox(height: 12),
 
+                        _ActionCard(
+                          title: 'Generar Plan',
+                          subtitle: 'Crear plan nutricional',
+                          icon: Icons.assignment_outlined,
+                          color: const Color(0xFFFF9800),
+                          onTap: () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const SeleccionarPacientePlanScreen(),
+                              ),
+                            );
+                            // Si se creó un plan o se volvió desde cualquier pantalla, recargar estadísticas
+                            // Siempre recargar cuando se vuelve para asegurar que los datos estén actualizados
+                            if (mounted) {
+                              // Pequeño delay para asegurar que la navegación se completó
+                              Future.delayed(const Duration(milliseconds: 300), () {
+                                if (mounted) {
+                                  _cargarEstadisticas();
+                                }
+                              });
+                            }
+                          },
+                        ),
+                const SizedBox(height: 12),
+
                 _ActionCard(
-                  title: 'Generar Plan',
-                  subtitle: 'Crear plan nutricional',
-                  icon: Icons.assignment_outlined,
-                  color: const Color(0xFFFF9800),
+                  title: 'Métricas y Reportes',
+                  subtitle: 'Evaluaciones de modelos',
+                  icon: Icons.assessment,
+                  color: const Color(0xFF2196F3),
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Generar plan (Próximamente)')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const MetricasEvaluacionesScreen(),
+                      ),
                     );
                   },
                 ),

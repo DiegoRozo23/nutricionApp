@@ -13,6 +13,8 @@ import '../../domain/entities/nutricionista.dart';
 import '../../domain/entities/paciente.dart';
 import 'role_selection_screen.dart';
 import 'perfil_paciente_screen.dart';
+import '../../../pacientes/presentation/screens/plan_nutricional_screen.dart';
+import '../../../pacientes/presentation/screens/lista_planes_paciente_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PacientePanel extends StatefulWidget {
@@ -888,16 +890,20 @@ class _PacientePanelState extends State<PacientePanel> {
                     height: 56,
                     child: ElevatedButton.icon(
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Próximamente'),
-                            backgroundColor: Color(0xFF2196F3),
-                          ),
-                        );
+                        if (_paciente != null) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => ListaPlanesPacienteScreen(
+                                paciente: _paciente!,
+                              ),
+                            ),
+                          );
+                        }
                       },
                       icon: const Icon(Icons.restaurant_menu, size: 24),
                       label: const Text(
-                        'Ver Plan Nutricional',
+                        'Ver Planes Nutricionales',
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

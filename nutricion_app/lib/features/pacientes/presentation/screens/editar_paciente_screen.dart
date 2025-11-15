@@ -40,6 +40,7 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
     double? talla,
     double? imc,
     Map<String, dynamic>? medidasAntropometricas,
+    String? actividadFisica,
     String? historialMedico,
     String? observaciones,
   }) async {
@@ -63,6 +64,7 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
       talla: talla,
       imc: imc,
       medidasAntropometricas: medidasAntropometricas ?? widget.paciente.medidasAntropometricas,
+      actividadFisica: actividadFisica ?? widget.paciente.actividadFisica,
       historialMedico: historialMedico,
       observaciones: observaciones,
       activo: widget.paciente.activo,
@@ -128,6 +130,7 @@ class _EditarPacienteScreenState extends State<EditarPacienteScreen> {
               tallaInicial: widget.paciente.talla,
               imcInicial: widget.paciente.imc,
               medidasAntropometricasInicial: widget.paciente.medidasAntropometricas,
+              actividadFisicaInicial: widget.paciente.actividadFisica,
               historialMedicoInicial: widget.paciente.historialMedico,
               observacionesInicial: widget.paciente.observaciones,
               onSubmit: _actualizarPaciente,
