@@ -93,10 +93,12 @@ class DecimalTextInputFormatter extends TextInputFormatter {
 class _MedidaAntropometrica {
   final TextEditingController nombreController;
   final TextEditingController valorController;
+  final bool esFija; // Indica si la medida no puede ser editada ni eliminada
 
   _MedidaAntropometrica({
     required String nombre,
     required String valor,
+    this.esFija = false,
   })  : nombreController = TextEditingController(text: nombre),
         valorController = TextEditingController(text: valor);
 
@@ -135,7 +137,7 @@ class _MedidaCardState extends State<_MedidaCard> with AutomaticKeepAliveClientM
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Card(
-        color: Colors.grey.shade50,
+        color: widget.medida.esFija ? Colors.blue.shade50 : Colors.grey.shade50,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Column(
@@ -144,23 +146,42 @@ class _MedidaCardState extends State<_MedidaCard> with AutomaticKeepAliveClientM
               Row(
                 children: [
                   Expanded(
-                    child: TextFormField(
-                      controller: widget.medida.nombreController,
-                      textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'Medida',
-                        hintText: 'Ej: Cintura, Pliegue Tríceps',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.label),
-                      ),
-                    ),
+                    child: widget.medida.esFija
+                        ? TextFormField(
+                            controller: widget.medida.nombreController,
+                            enabled: false,
+                            decoration: InputDecoration(
+                              labelText: 'Medida',
+                              border: const OutlineInputBorder(),
+                              prefixIcon: const Icon(Icons.label),
+                              filled: true,
+                              fillColor: Colors.grey.shade200,
+                            ),
+                          )
+                        : TextFormField(
+                            controller: widget.medida.nombreController,
+                            textInputAction: TextInputAction.next,
+                            decoration: const InputDecoration(
+                              labelText: 'Medida',
+                              hintText: 'Ej: Cintura, Pliegue Tríceps',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.label),
+                            ),
+                          ),
                   ),
                   const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline, color: Colors.red),
-                    onPressed: widget.onDelete,
-                    tooltip: 'Eliminar medida',
-                  ),
+                  if (!widget.medida.esFija)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      onPressed: widget.onDelete,
+                      tooltip: 'Eliminar medida',
+                    )
+                  else
+                    IconButton(
+                      icon: const Icon(Icons.lock, color: Colors.blue),
+                      onPressed: null,
+                      tooltip: 'Medida obligatoria',
+                    ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -289,14 +310,29 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
     
     // Inicializar medidas antropométricas desde el Map
     final medidasInicial = widget.medidasAntropometricasInicial ?? {};
+    bool tieneCintura = false;
     if (medidasInicial.isNotEmpty) {
       medidasInicial.forEach((key, value) {
+        final esCintura = key.toString().toLowerCase() == 'cintura';
+        if (esCintura) {
+          tieneCintura = true;
+        }
         _medidasAntropometricas.add(_MedidaAntropometrica(
           nombre: key,
           valor: value.toString(),
+          esFija: esCintura,
         ));
       });
       _expandedMedidas = true;
+    }
+    
+    // Si no hay cintura en las medidas iniciales, agregarla como primera medida fija
+    if (!tieneCintura) {
+      _medidasAntropometricas.insert(0, _MedidaAntropometrica(
+        nombre: 'Cintura',
+        valor: '',
+        esFija: true,
+      ));
     }
   }
 
@@ -354,6 +390,10 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
 
   /// Eliminar una medida antropométrica
   void _eliminarMedida(int index) {
+    // No permitir eliminar medidas fijas (como cintura)
+    if (_medidasAntropometricas[index].esFija) {
+      return;
+    }
     setState(() {
       _medidasAntropometricas[index].dispose();
       _medidasAntropometricas.removeAt(index);
@@ -672,6 +712,14 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
                   if (_expandedMedidas != expanded) {
                     setState(() {
                       _expandedMedidas = expanded;
+                      // Si se expande y no hay medidas, agregar cintura por defecto
+                      if (expanded && _medidasAntropometricas.isEmpty) {
+                        _medidasAntropometricas.add(_MedidaAntropometrica(
+                          nombre: 'Cintura',
+                          valor: '',
+                          esFija: true,
+                        ));
+                      }
                     });
                   }
                 },
@@ -723,7 +771,7 @@ class _FormularioPacienteState extends State<FormularioPaciente> {
                                   children: List.generate(_medidasAntropometricas.length, (index) {
                                     final medida = _medidasAntropometricas[index];
                                     return _MedidaCard(
-                                      key: ValueKey(medida), // key estable (el objeto)
+                                      key: ValueKey('${medida.nombre}_$index'), // key estable con índice
                                       medida: medida,
                                       onDelete: () => _eliminarMedida(index),
                                     );
