@@ -18,10 +18,12 @@ class SeleccionarPlantillaScreen extends StatefulWidget {
   });
 
   @override
-  State<SeleccionarPlantillaScreen> createState() => _SeleccionarPlantillaScreenState();
+  State<SeleccionarPlantillaScreen> createState() =>
+      _SeleccionarPlantillaScreenState();
 }
 
-class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen> {
+class _SeleccionarPlantillaScreenState
+    extends State<SeleccionarPlantillaScreen> {
   final PrediccionPlanService _prediccionService = PrediccionPlanService();
   late Paciente _paciente; // Mantener el paciente actualizado
   bool _obteniendoPrediccion = false;
@@ -94,11 +96,12 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
       }
     }
     if (!tieneCintura) {
-      datosFaltantes.add('Circunferencia de cintura (en Medidas Antropométricas)');
+      datosFaltantes
+          .add('Circunferencia de cintura (en Medidas Antropométricas)');
     }
 
     // 7. Nivel de actividad física
-    if (_paciente.actividadFisica == null || 
+    if (_paciente.actividadFisica == null ||
         _paciente.actividadFisica!.isEmpty) {
       datosFaltantes.add('Nivel de actividad física');
     }
@@ -125,40 +128,47 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Para generar un plan nutricional con IA, se requieren los siguientes datos del paciente:',
+                'Para generar un plan nutricional Machine Learning, se requieren los siguientes datos del paciente:',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               const Text('Datos requeridos:'),
               const SizedBox(height: 8),
-              ...['Edad', 'Sexo', 'Peso', 'Talla', 'IMC', 'Circunferencia de cintura (en Medidas Antropométricas)', 'Nivel de actividad física']
-                  .map((dato) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Icon(
-                              datosFaltantes.contains(dato)
-                                  ? Icons.close
-                                  : Icons.check_circle,
-                              size: 20,
-                              color: datosFaltantes.contains(dato)
-                                  ? Colors.red
-                                  : Colors.green,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                dato,
-                                style: TextStyle(
-                                  color: datosFaltantes.contains(dato)
-                                      ? Colors.red.shade700
-                                      : Colors.grey.shade700,
-                                ),
-                              ),
-                            ),
-                          ],
+              ...[
+                'Edad',
+                'Sexo',
+                'Peso',
+                'Talla',
+                'IMC',
+                'Circunferencia de cintura (en Medidas Antropométricas)',
+                'Nivel de actividad física'
+              ].map((dato) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          datosFaltantes.contains(dato)
+                              ? Icons.close
+                              : Icons.check_circle,
+                          size: 20,
+                          color: datosFaltantes.contains(dato)
+                              ? Colors.red
+                              : Colors.green,
                         ),
-                      )),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            dato,
+                            style: TextStyle(
+                              color: datosFaltantes.contains(dato)
+                                  ? Colors.red.shade700
+                                  : Colors.grey.shade700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
               if (datosFaltantes.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Container(
@@ -239,7 +249,7 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
   Future<void> _obtenerPrediccionIA() async {
     // Validar que el paciente tenga todos los datos necesarios
     final datosFaltantes = _validarDatosPaciente();
-    
+
     if (datosFaltantes.isNotEmpty) {
       await _mostrarDatosFaltantes(datosFaltantes);
       return;
@@ -264,7 +274,7 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
             break;
           }
         }
-        
+
         if (claveCintura != null) {
           final valor = medidas[claveCintura];
           if (valor is num) {
@@ -273,9 +283,10 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
             circunferenciaCintura = double.tryParse(valor) ?? 0.0;
           }
         }
-        
+
         if (kDebugMode) {
-          print('[PREDICCION] Circunferencia de cintura encontrada: $circunferenciaCintura (clave: $claveCintura)');
+          print(
+              '[PREDICCION] Circunferencia de cintura encontrada: $circunferenciaCintura (clave: $claveCintura)');
         }
       }
 
@@ -284,9 +295,13 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
 
       // Convertir sexo a formato esperado por la API (M o F)
       String sexo = _paciente.sexo!;
-      if (sexo == 'M' || sexo == 'Masculino' || sexo.toLowerCase() == 'masculino') {
+      if (sexo == 'M' ||
+          sexo == 'Masculino' ||
+          sexo.toLowerCase() == 'masculino') {
         sexo = 'M';
-      } else if (sexo == 'F' || sexo == 'Femenino' || sexo.toLowerCase() == 'femenino') {
+      } else if (sexo == 'F' ||
+          sexo == 'Femenino' ||
+          sexo.toLowerCase() == 'femenino') {
         sexo = 'F';
       } else {
         // Si no coincide, usar M por defecto
@@ -309,10 +324,12 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
 
       // Calcular tiempo de generación (solo el tiempo de la llamada a la API)
       final tiempoFin = DateTime.now();
-      final tiempoGeneracion = tiempoFin.difference(tiempoInicio).inMilliseconds / 1000.0;
+      final tiempoGeneracion =
+          tiempoFin.difference(tiempoInicio).inMilliseconds / 1000.0;
 
       if (kDebugMode) {
-        print('[PREDICCION] Tiempo de generación del modelo: ${tiempoGeneracion.toStringAsFixed(2)} segundos');
+        print(
+            '[PREDICCION] Tiempo de generación del modelo: ${tiempoGeneracion.toStringAsFixed(2)} segundos');
       }
 
       setState(() {
@@ -363,7 +380,7 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Error al obtener predicción de IA.\n${e.toString()}',
+              'Error al obtener predicción con Machine Learning.\n${e.toString()}',
             ),
             backgroundColor: Colors.orange,
             duration: const Duration(seconds: 5),
@@ -423,14 +440,17 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.auto_awesome,
-                      size: 80,
-                      color: const Color(0xFFFF9800).withOpacity(0.7),
+                    // AQUI ES DONDE CAMBIAMOS EL ICONO POR TU IMAGEN
+                    Image.asset(
+                      'assets/images/nuevo_icono.png',
+                      width: 100, // Ajusta el tamaño según sea necesario
+                      height: 100, // Ajusta el tamaño según sea necesario
+                      fit: BoxFit
+                          .contain, // Para que la imagen se ajuste sin recortarse
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'Generar Plan Nutricional con IA',
+                      'Generar Plan Nutricional con Machine Learning',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -451,21 +471,29 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton.icon(
-                        onPressed: _obteniendoPrediccion ? null : _obtenerPrediccionIA,
+                        onPressed: _obteniendoPrediccion
+                            ? null
+                            : _obtenerPrediccionIA,
                         icon: _obteniendoPrediccion
                             ? const SizedBox(
                                 width: 24,
                                 height: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white),
                                 ),
                               )
-                            : const Icon(Icons.auto_awesome, size: 28),
+                            : const Icon(
+                                // <-- AQUÍ ESTÁ EL CAMBIO
+                                Icons.auto_awesome, // Icono de estrellas/brillos
+                                color: Colors.white,
+                                size: 28, // Tamaño similar al anterior
+                              ),
                         label: Text(
                           _obteniendoPrediccion
                               ? 'Obteniendo predicción...'
-                              : 'Generar Plan con IA',
+                              : 'Generar Con Machine Learning',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -488,4 +516,3 @@ class _SeleccionarPlantillaScreenState extends State<SeleccionarPlantillaScreen>
     );
   }
 }
-

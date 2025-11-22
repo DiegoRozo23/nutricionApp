@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 /// Servicio para obtener predicciones de planes nutricionales usando API en Render
 class PrediccionPlanService {
   // URL de la API en Render
-  static const String _apiUrl = 'https://randomforest-9puj.onrender.com/predecir';
+  static const String _apiUrl = 'https://randomforest-af5a.onrender.com/predecir';
 
   PrediccionPlanService();
 

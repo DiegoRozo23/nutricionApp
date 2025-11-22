@@ -94,6 +94,7 @@ flutter:
   assets:
     - .env
     - assets/images/icono.png
+    - assets/images/nuevo_icono.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -124,5 +125,5 @@ flutter:
 # Configuración de iconos de la app
 flutter_launcher_icons:
   android: true
-  ios: false  # Solo configurar para Android (APK)
+  ios: true  
   image_path: "assets/images/icono.png"

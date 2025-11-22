@@ -339,7 +339,7 @@ class _PlanSugeridoScreenState extends State<PlanSugeridoScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    'Plan Recomendado por IA',
+                                    'Plan Recomendado por Machine Learning',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,

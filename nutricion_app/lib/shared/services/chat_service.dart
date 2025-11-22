@@ -108,6 +108,7 @@ class ChatService {
   }
 
   /// Asegurar que un usuario existe en chats.users
+  /// IMPORTANTE: Esta función NO debe actualizar user_status para evitar marcar usuarios como activos incorrectamente
   Future<void> _ensureUserInChat(String userId, {String? firstName, String? lastName}) async {
     try {
       final supabase = supabaseService.client;
@@ -122,6 +123,8 @@ class ChatService {
 
       if (existingUser == null) {
         // Crear usuario en chats.users
+        // NOTA: No actualizamos user_status aquí para evitar marcar usuarios como activos
+        // El user_status solo debe actualizarse cuando el usuario realmente se conecta
         final now = DateTime.now();
         await supabase.schema('chats').from('users').insert({
           'id': userId,
@@ -131,8 +134,37 @@ class ChatService {
           'updatedAt': now.millisecondsSinceEpoch,
           'lastSeen': now.millisecondsSinceEpoch,
         });
+        
+        // Asegurar que NO se crea un registro en user_status con is_online=true
+        // Si no existe user_status, lo creamos con is_online=false para que no aparezca como activo
+        try {
+          final existingStatus = await supabase
+              .schema('chats')
+              .from('user_status')
+              .select('user_id')
+              .eq('user_id', userId)
+              .maybeSingle();
+              
+          if (existingStatus == null) {
+            // Crear registro con is_online=false para que no aparezca como activo
+            await supabase.schema('chats').from('user_status').insert({
+              'user_id': userId,
+              'is_online': false,
+              'last_seen_at': null, // No establecer last_seen_at para que no aparezca como activo
+            });
+            if (kDebugMode) {
+              print('[CHAT_SERVICE] Creado user_status con is_online=false para usuario: $userId');
+            }
+          }
+        } catch (e) {
+          // Si falla al crear user_status, no es crítico, solo loguear
+          if (kDebugMode) {
+            print('[CHAT_SERVICE] Error al crear user_status (no crítico): $e');
+          }
+        }
       } else if (firstName != null || lastName != null) {
         // Actualizar nombres si se proporcionaron
+        // IMPORTANTE: No actualizar user_status aquí
         await supabase
             .schema('chats')
             .from('users')

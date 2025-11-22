@@ -503,7 +503,7 @@ class _PlanNutricionalScreenState extends State<PlanNutricionalScreen> {
     // Cargar el logo de la app (con manejo de errores)
     pw.ImageProvider? logoImage;
     try {
-      final ByteData logoData = await rootBundle.load('assets/images/icono.png');
+      final ByteData logoData = await rootBundle.load('assets/images/nuevo_icono.png');
       final Uint8List logoBytes = logoData.buffer.asUint8List();
       logoImage = pw.MemoryImage(logoBytes);
     } catch (e) {
