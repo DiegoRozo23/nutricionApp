@@ -67,6 +67,12 @@ Documentación técnica detallada del código Flutter/Dart:
 - Ejemplos de código
 - Guía de debugging
 
+### 🤖 Inteligencia Artificial
+Recursos del modelo de IA (Random Forest):
+- [📄 Documentación del Modelo](./Documentación%20del%20Modelo%20de%20Nutrición%20(1).pdf)
+- [📓 Notebook de Entrenamiento (Local)](./entrenamiento_.ipynb)
+- [☁️ Notebook en Google Colab](https://colab.research.google.com/drive/18Pfgu359EKkwIhNGE53mcN8OPhnYCRje?usp=sharing#scrollTo=jErVGyTDtO2C)
+
 ---
 
 ## 🛠️ Tecnologías

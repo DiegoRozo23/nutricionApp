@@ -485,14 +485,13 @@ class _SeleccionarPlantillaScreenState
                                 ),
                               )
                             : const Icon(
-                                // <-- AQUÍ ESTÁ EL CAMBIO
-                                Icons.auto_awesome, // Icono de estrellas/brillos
+                                Icons.auto_awesome,
                                 color: Colors.white,
-                                size: 28, // Tamaño similar al anterior
+                                size: 28,
                               ),
                         label: Text(
                           _obteniendoPrediccion
-                              ? 'Obteniendo predicción...'
+                              ? 'Generando plan nutricional...'
                               : 'Generar Con Machine Learning',
                           style: const TextStyle(
                             fontSize: 18,
