@@ -47,7 +47,12 @@ class _MetricasEvaluacionesScreenState extends State<MetricasEvaluacionesScreen>
   }
 
   String _formatearFecha(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    // Convertir de UTC a hora local
+    final localDate = date.toLocal();
+    // Convertir a formato de 12 horas
+    final int hour = localDate.hour > 12 ? localDate.hour - 12 : (localDate.hour == 0 ? 12 : localDate.hour);
+    final String period = localDate.hour >= 12 ? 'pm' : 'am';
+    return '${localDate.day.toString().padLeft(2, '0')}/${localDate.month.toString().padLeft(2, '0')}/${localDate.year} ${hour.toString().padLeft(2, '0')}:${localDate.minute.toString().padLeft(2, '0')} $period';
   }
 
   String _formatearTiempo(double segundos) {
@@ -159,33 +164,36 @@ class _MetricasEvaluacionesScreenState extends State<MetricasEvaluacionesScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: _ResumenCard(
-                                        titulo: 'Total',
-                                        valor: '${_evaluaciones.length}',
-                                        color: Colors.blue,
-                                      ),
+                                  IntrinsicHeight(
+                                    child: Row(
+                                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                                      children: [
+                                        Expanded(
+                                          child: _ResumenCard(
+                                            titulo: 'Total Planes',
+                                            valor: '${_evaluaciones.length}',
+                                            color: Colors.blue,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: _ResumenCard(
+                                            titulo: 'Filas Correctas',
+                                            valor: '${_evaluaciones.fold<int>(0, (sum, e) => sum + ((e['filas_correctas'] as int?) ?? 0))}',
+                                            color: Colors.green,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                          child: _ResumenCard(
+                                            titulo: 'Filas Incorrectas',
+                                            valor: '${_evaluaciones.fold<int>(0, (sum, e) => sum + ((e['filas_incorrectas'] as int?) ?? 0))}',
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: _ResumenCard(
-                                        titulo: 'Correctos',
-                                        valor: '${_evaluaciones.where((e) => e['calificacion_nutricionista'] == 'Correcto').length}',
-                                        color: Colors.green,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: _ResumenCard(
-                                        titulo: 'Incorrectos',
-                                        valor: '${_evaluaciones.where((e) => e['calificacion_nutricionista'] == 'Incorrecto').length}',
-                                        color: Colors.red,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
                                 const SizedBox(height: 8),
                                 Row(
                                   children: [
@@ -253,7 +261,17 @@ class _MetricasEvaluacionesScreenState extends State<MetricasEvaluacionesScreen>
                                     ),
                                     DataColumn(
                                       label: Text(
-                                        'Calificación',
+                                        'Filas\nCorrectas',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ),
+                                    DataColumn(
+                                      label: Text(
+                                        'Filas\nIncorrectas',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 12,
@@ -281,8 +299,8 @@ class _MetricasEvaluacionesScreenState extends State<MetricasEvaluacionesScreen>
                                     ),
                                   ],
                                   rows: _evaluaciones.map((evaluacion) {
-                                    final calificacion = evaluacion['calificacion_nutricionista'] as String? ?? 'N/A';
-                                    final esCorrecto = calificacion == 'Correcto';
+                                    final filasCorrectas = evaluacion['filas_correctas'] as int? ?? 0;
+                                    final filasIncorrectas = evaluacion['filas_incorrectas'] as int? ?? 0;
                                     final fechaStr = evaluacion['fecha_evaluacion'] as String?;
                                     DateTime? fecha;
                                     if (fechaStr != null) {
@@ -326,29 +344,39 @@ class _MetricasEvaluacionesScreenState extends State<MetricasEvaluacionesScreen>
                                         DataCell(
                                           Container(
                                             padding: const EdgeInsets.symmetric(
-                                              horizontal: 8,
+                                              horizontal: 12,
                                               vertical: 4,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: esCorrecto
-                                                  ? Colors.green.shade100
-                                                  : Colors.red.shade100,
+                                              color: Colors.green.shade100,
                                               borderRadius: BorderRadius.circular(12),
-                                              border: Border.all(
-                                                color: esCorrecto
-                                                    ? Colors.green.shade300
-                                                    : Colors.red.shade300,
-                                                width: 1,
-                                              ),
                                             ),
                                             child: Text(
-                                              calificacion,
+                                              '$filasCorrectas',
                                               style: TextStyle(
                                                 fontSize: 11,
                                                 fontWeight: FontWeight.bold,
-                                                color: esCorrecto
-                                                    ? Colors.green.shade800
-                                                    : Colors.red.shade800,
+                                                color: Colors.green.shade800,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        DataCell(
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.red.shade100,
+                                              borderRadius: BorderRadius.circular(12),
+                                            ),
+                                            child: Text(
+                                              '$filasIncorrectas',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.red.shade800,
                                               ),
                                             ),
                                           ),
@@ -407,6 +435,7 @@ class _ResumenCard extends StatelessWidget {
         border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
@@ -416,7 +445,6 @@ class _ResumenCard extends StatelessWidget {
               color: Colors.grey.shade700,
             ),
           ),
-          const SizedBox(height: 4),
           Text(
             valor,
             style: TextStyle(

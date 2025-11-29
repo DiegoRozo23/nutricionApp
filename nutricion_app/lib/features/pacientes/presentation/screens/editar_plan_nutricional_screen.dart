@@ -150,6 +150,8 @@ class _EditarPlanNutricionalScreenState extends State<EditarPlanNutricionalScree
                   calificacionNutricionista: 'Incorrecto',
                   nutricionistaId: nutriResponse['id'] as String,
                   pacienteId: widget.pacienteId,
+                  filasCorrectas: 0,
+                  filasIncorrectas: 0,
                 );
               }
             }

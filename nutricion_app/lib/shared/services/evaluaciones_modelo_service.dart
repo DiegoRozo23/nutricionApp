@@ -18,6 +18,8 @@ class EvaluacionesModeloService {
     required String calificacionNutricionista,
     required String nutricionistaId,
     required String pacienteId,
+    required int filasCorrectas,
+    required int filasIncorrectas,
   }) async {
     try {
       final evaluacionData = {
@@ -28,6 +30,8 @@ class EvaluacionesModeloService {
         'calificacion_nutricionista': calificacionNutricionista,
         'nutricionista_id': nutricionistaId,
         'paciente_id': pacienteId,
+        'filas_correctas': filasCorrectas,
+        'filas_incorrectas': filasIncorrectas,
       };
 
       final response = await _supabase

@@ -9,6 +9,7 @@ import '../../../../shared/services/evaluaciones_modelo_service.dart';
 import '../../../auth/domain/entities/paciente.dart';
 import 'editar_plan_nutricional_screen.dart';
 import 'plan_nutricional_screen.dart';
+import 'detalle_plan_sugerido_screen.dart';
 
 /// Pantalla para mostrar el plan sugerido por la IA y permitir editarlo o guardarlo
 class PlanSugeridoScreen extends StatefulWidget {
@@ -111,180 +112,7 @@ class _PlanSugeridoScreenState extends State<PlanSugeridoScreen> {
     }
   }
 
-  Future<void> _guardarPlanDirectamente() async {
-    if (_planSugerido == null) return;
 
-    try {
-      if (mounted) {
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (context) => const Center(child: CircularProgressIndicator()),
-        );
-      }
-
-      // Obtener el nutricionista actual
-      final user = supabaseService.client.auth.currentUser;
-      if (user == null) {
-        throw Exception('No hay usuario autenticado');
-      }
-
-      final nutriResponse = await supabaseService.client
-          .from('nutricionistas')
-          .select('id')
-          .eq('auth_uid', user.id)
-          .single();
-
-      final nutricionistaId = nutriResponse['id'] as String;
-
-      // Convertir el plan a JSON para guardar
-      final planGenerado = _planSugerido!.toJson();
-
-      // Crear el plan nutricional
-      final planCreado = await _planesService.crearPlanNutricional(
-        pacienteId: widget.paciente.id,
-        nutricionistaId: nutricionistaId,
-        planGenerado: planGenerado,
-      );
-
-      final planId = planCreado['id'] as String;
-
-      // Obtener el número secuencial para el código del plan
-      final anioActual = DateTime.now().year;
-      final numeroSecuencial = await _evaluacionesService.obtenerSiguienteNumeroSecuencial(anioActual);
-
-      // Generar código del plan
-      final codigoPlan = EvaluacionesModeloService.generarCodigoPlan(numeroSecuencial, anioActual);
-
-      // Registrar evaluación como "Correcto" (se guardó sin editar)
-      await _evaluacionesService.crearEvaluacion(
-        planId: planId,
-        codigoPlan: codigoPlan,
-        tipoPlanNutricional: _planSugerido!.nombre,
-        tiempoGeneracionSegundos: widget.tiempoGeneracionSegundos,
-        calificacionNutricionista: 'Correcto',
-        nutricionistaId: nutricionistaId,
-        pacienteId: widget.paciente.id,
-      );
-
-      if (mounted) {
-        Navigator.of(context).pop(); // Cerrar diálogo de carga
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Plan nutricional guardado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        // Cerrar esta pantalla y la anterior, luego navegar a la visualización del plan
-        // Usar Future.microtask para asegurar que los pops se ejecuten antes del push
-        Navigator.of(context).pop(); // Cerrar PlanSugeridoScreen
-        Future.microtask(() {
-          if (mounted) {
-            Navigator.of(context).pop(); // Cerrar SeleccionarPlantillaScreen
-            Future.microtask(() {
-              if (mounted) {
-                // Ahora navegar a la visualización del plan desde SeleccionarPacientePlanScreen
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => PlanNutricionalScreen(
-                      planId: planId,
-                      pacienteId: widget.paciente.id,
-                    ),
-                  ),
-                );
-              }
-            });
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        Navigator.of(context).pop(); // Cerrar diálogo de carga
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al guardar plan: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _editarPlanAntesDeGuardar() async {
-    if (_planSugerido == null) return;
-
-    try {
-      // Primero guardar el plan
-      final user = supabaseService.client.auth.currentUser;
-      if (user == null) {
-        throw Exception('No hay usuario autenticado');
-      }
-
-      final nutriResponse = await supabaseService.client
-          .from('nutricionistas')
-          .select('id')
-          .eq('auth_uid', user.id)
-          .single();
-
-      final nutricionistaId = nutriResponse['id'] as String;
-      final planGenerado = _planSugerido!.toJson();
-
-      // Crear el plan primero
-      final planCreado = await _planesService.crearPlanNutricional(
-        pacienteId: widget.paciente.id,
-        nutricionistaId: nutricionistaId,
-        planGenerado: planGenerado,
-      );
-
-      final planId = planCreado['id'] as String;
-
-      // Obtener el número secuencial para el código del plan
-      final anioActual = DateTime.now().year;
-      final numeroSecuencial = await _evaluacionesService.obtenerSiguienteNumeroSecuencial(anioActual);
-
-      // Generar código del plan
-      final codigoPlan = EvaluacionesModeloService.generarCodigoPlan(numeroSecuencial, anioActual);
-
-      // Registrar evaluación como "Incorrecto" (se va a editar)
-      await _evaluacionesService.crearEvaluacion(
-        planId: planId,
-        codigoPlan: codigoPlan,
-        tipoPlanNutricional: _planSugerido!.nombre,
-        tiempoGeneracionSegundos: widget.tiempoGeneracionSegundos,
-        calificacionNutricionista: 'Incorrecto',
-        nutricionistaId: nutricionistaId,
-        pacienteId: widget.paciente.id,
-      );
-
-      // Navegar a la pantalla de edición
-      final result = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => EditarPlanNutricionalScreen(
-            pacienteId: widget.paciente.id,
-            planId: planId,
-            planActual: _planSugerido!,
-          ),
-        ),
-      );
-
-      if (result == true && mounted) {
-        // La navegación ya se hizo desde EditarPlanNutricionalScreen
-        // Solo cerramos esta pantalla y retornamos true para que el dashboard se actualice
-        Navigator.of(context).pop(true); // Cerrar PlanSugeridoScreen y retornar true
-        Navigator.of(context).pop(true); // Cerrar también SeleccionarPlantillaScreen y retornar true
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al crear plan para editar: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -409,7 +237,7 @@ class _PlanSugeridoScreenState extends State<PlanSugeridoScreen> {
                           ),
                         ),
 
-                        // Botones de acción
+                        // Botón Siguiente
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -423,52 +251,42 @@ class _PlanSugeridoScreenState extends State<PlanSugeridoScreen> {
                             ],
                           ),
                           child: SafeArea(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 50,
-                                  child: ElevatedButton.icon(
-                                    onPressed: _editarPlanAntesDeGuardar,
-                                    icon: const Icon(Icons.edit),
-                                    label: const Text(
-                                      'Editar y Guardar',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                            child: SizedBox(
+                              width: double.infinity,
+                              height: 50,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  if (_planSugerido != null) {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => DetallePlanSugeridoScreen(
+                                          paciente: widget.paciente,
+                                          planSugerido: _planSugerido!,
+                                          tiempoGeneracionSegundos: widget.tiempoGeneracionSegundos,
+                                        ),
                                       ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFF4CAF50),
-                                      foregroundColor: Colors.white,
-                                    ),
+                                    ).then((result) {
+                                      if (result == true && mounted) {
+                                        // Si se guardó exitosamente, cerrar esta pantalla también
+                                        Navigator.of(context).pop(true);
+                                      }
+                                    });
+                                  }
+                                },
+                                icon: const Icon(Icons.arrow_forward),
+                                label: const Text(
+                                  'Siguiente',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 50,
-                                  child: OutlinedButton.icon(
-                                    onPressed: _guardarPlanDirectamente,
-                                    icon: const Icon(Icons.save),
-                                    label: const Text(
-                                      'Guardar Tal Cual',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFF4CAF50),
-                                      side: const BorderSide(
-                                        color: Color(0xFF4CAF50),
-                                        width: 2,
-                                      ),
-                                    ),
-                                  ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF9800),
+                                  foregroundColor: Colors.white,
                                 ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
